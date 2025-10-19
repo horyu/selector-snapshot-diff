@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import type {
     HistoryEntry,
     SlotSource,
@@ -13,13 +12,17 @@
   export let saving = false;
   export let busyIds: string[] = [];
   export let previews: Record<string, string> = {};
-  const dispatch = createEventDispatcher<{
-    deleteEntry: HistoryEntry;
-    loadImage: { entry: HistoryEntry; slot: 'left' | 'right' };
-    applyPlaywrightForm: PlaywrightFormState;
-    clearAll: void;
-    previewImage: { entry: HistoryEntry; blobUrl?: string };
-  }>();
+  export let onDeleteEntry: ((entry: HistoryEntry) => void) | undefined;
+  export let onLoadImage:
+    | ((payload: { entry: HistoryEntry; slot: 'left' | 'right' }) => void)
+    | undefined;
+  export let onApplyPlaywrightForm:
+    | ((state: PlaywrightFormState) => void)
+    | undefined;
+  export let onClearAll: (() => void) | undefined;
+  export let onPreviewImage:
+    | ((payload: { entry: HistoryEntry; blobUrl?: string }) => void)
+    | undefined;
 
   const historyDateFormatter = new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
@@ -96,7 +99,7 @@
     if (
       window.confirm('保存されている履歴をすべて削除します。よろしいですか？')
     ) {
-      dispatch('clearAll');
+      onClearAll?.();
     }
   }
 </script>
@@ -133,7 +136,7 @@
           <button
             class="history-preview"
             on:click={() =>
-              dispatch('previewImage', {
+              onPreviewImage?.({
                 entry,
                 blobUrl: previews[entry.id],
               })}
@@ -173,7 +176,7 @@
                     <button
                       class="link"
                       on:click={() =>
-                        dispatch('applyPlaywrightForm', pwSourceHeader.form)}
+                        onApplyPlaywrightForm?.(pwSourceHeader.form)}
                     >
                       設定を復元
                     </button>
@@ -182,7 +185,7 @@
               </div>
               <button
                 class="link danger"
-                on:click={() => dispatch('deleteEntry', entry)}
+                on:click={() => onDeleteEntry?.(entry)}
                 disabled={isEntryBusy(entry.id) || saving}
               >
                 削除
@@ -219,13 +222,13 @@
             </div>
             <div class="history-actions">
               <button
-                on:click={() => dispatch('loadImage', { entry, slot: 'left' })}
+                on:click={() => onLoadImage?.({ entry, slot: 'left' })}
                 disabled={isEntryBusy(entry.id) || saving}
               >
                 左に読み込む
               </button>
               <button
-                on:click={() => dispatch('loadImage', { entry, slot: 'right' })}
+                on:click={() => onLoadImage?.({ entry, slot: 'right' })}
                 disabled={isEntryBusy(entry.id) || saving}
               >
                 右に読み込む

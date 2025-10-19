@@ -642,10 +642,10 @@
       bind:args={argsInput}
       {fetchingLeft}
       {fetchingRight}
-      on:fetch={(event) => fetchScreenshot(event.detail.slot)}
-      on:cancel={(event) => cancelFetch(event.detail.slot)}
-      on:clear={clearSavedAppState}
-      on:copyLink={() => void copyShareLink()}
+      onFetch={({ slot }) => fetchScreenshot(slot)}
+      onCancel={({ slot }) => cancelFetch(slot)}
+      onClear={clearSavedAppState}
+      onCopyLink={() => void copyShareLink()}
     />
   </div>
 
@@ -687,14 +687,13 @@
     {left}
     {right}
     {ready}
-    on:dropFiles={(event) => addFiles(event.detail.files, 'upload')}
-    on:chooseFiles={(event) =>
-      handleChosenFiles(event.detail.slot, event.detail.files)}
-    on:clearLeft={() => clear('left')}
-    on:clearRight={() => clear('right')}
-    on:reset={resetAll}
-    on:swap={swapSlots}
-    on:openDiff={() => (showDiff = true)}
+    onDropFiles={({ files }) => addFiles(files, 'upload')}
+    onChooseFiles={({ slot, files }) => handleChosenFiles(slot, files)}
+    onClearLeft={() => clear('left')}
+    onClearRight={() => clear('right')}
+    onReset={resetAll}
+    onSwap={swapSlots}
+    onOpenDiff={() => (showDiff = true)}
   />
 
   <HistoryPanel
@@ -704,13 +703,11 @@
     saving={historySaving}
     busyIds={entryBusy}
     previews={historyPreviews}
-    on:deleteEntry={(event) => handleDelete(event.detail)}
-    on:loadImage={(event) =>
-      loadHistoryImage(event.detail.entry, event.detail.slot)}
-    on:applyPlaywrightForm={(event) => void applyPlaywrightForm(event.detail)}
-    on:clearAll={() => void clearAllHistory()}
-    on:previewImage={(event) =>
-      openPreviewImage(event.detail.entry, event.detail.blobUrl)}
+    onDeleteEntry={(entry) => handleDelete(entry)}
+    onLoadImage={({ entry, slot }) => loadHistoryImage(entry, slot)}
+    onApplyPlaywrightForm={(state) => void applyPlaywrightForm(state)}
+    onClearAll={() => void clearAllHistory()}
+    onPreviewImage={({ entry, blobUrl }) => openPreviewImage(entry, blobUrl)}
   />
 
   {#if showDiff && left && right}
@@ -719,7 +716,7 @@
       rightUrl={right.url}
       leftName={left.label}
       rightName={right.label}
-      on:close={() => (showDiff = false)}
+      onClose={() => (showDiff = false)}
     />
   {/if}
 
@@ -727,7 +724,7 @@
     <HistoryImageModal
       src={previewImage.src}
       alt={previewImage.label}
-      on:close={closePreviewImage}
+      onClose={closePreviewImage}
     />
   {/if}
 </main>

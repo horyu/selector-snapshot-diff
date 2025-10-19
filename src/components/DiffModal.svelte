@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   export let leftUrl: string;
   export let rightUrl: string;
@@ -13,7 +13,7 @@
   } from '../domain/diff/diffProcessing';
   import { clamp } from '../util/clamp';
 
-  const dispatch = createEventDispatcher<{ close: void }>();
+  export let onClose: (() => void) | undefined;
   let restoreBodyStyles: (() => void) | null = null;
 
   let dx = 0; // px
@@ -159,7 +159,7 @@
         e.preventDefault();
         break;
       case 'Escape':
-        dispatch('close');
+        onClose?.();
         break;
     }
     updateWrapSize();
@@ -291,10 +291,8 @@
   >
     <header class="modal-header">
       <h2>差分ビューア</h2>
-      <button
-        class="icon"
-        on:click={() => dispatch('close')}
-        aria-label="閉じる">✕</button
+      <button class="icon" on:click={() => onClose?.()} aria-label="閉じる"
+        >✕</button
       >
     </header>
     <section class="modal-body">
@@ -527,7 +525,7 @@
   </div>
   <div
     class="modal-clickout"
-    on:click={() => dispatch('close')}
+    on:click={() => onClose?.()}
     aria-hidden="true"
   ></div>
 </div>

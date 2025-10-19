@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import FormField from './FormField.svelte';
 
   export let url = '';
@@ -15,30 +14,15 @@
   export let fetchingRight = false;
   export let urlInputRef: HTMLInputElement | null = null;
   export let selectorInputRef: HTMLInputElement | null = null;
-
-  const dispatch = createEventDispatcher<{
-    fetch: { slot: 'left' | 'right' };
-    clear: void;
-    copyLink: void;
-    cancel: { slot: 'left' | 'right' };
-  }>();
+  export let onFetch:
+    | ((payload: { slot: 'left' | 'right' }) => void)
+    | undefined;
+  export let onClear: (() => void) | undefined;
+  export let onCopyLink: (() => void) | undefined;
+  export let onCancel:
+    | ((payload: { slot: 'left' | 'right' }) => void)
+    | undefined;
   const argsPlaceholder = `例: --disable-web-security\n      --host-resolver-rules="MAP example.com 127.0.0.1"`;
-
-  function onFetch(slot: 'left' | 'right') {
-    dispatch('fetch', { slot });
-  }
-
-  function onClear() {
-    dispatch('clear');
-  }
-
-  function onCopyLink() {
-    dispatch('copyLink');
-  }
-
-  function onCancel(slot: 'left' | 'right') {
-    dispatch('cancel', { slot });
-  }
 </script>
 
 <section class="api-box" aria-label="対象スクリーンショット取得（Playwright）">
@@ -61,18 +45,18 @@
     </FormField>
     <div class="buttons">
       <button
-        on:click={() => onFetch('left')}
+        on:click={() => onFetch?.({ slot: 'left' })}
         disabled={fetchingLeft || fetchingRight}>左に取得</button
       >
       <button
-        on:click={() => onFetch('right')}
+        on:click={() => onFetch?.({ slot: 'right' })}
         disabled={fetchingLeft || fetchingRight}>右に取得</button
       >
       {#if fetchingLeft || fetchingRight}
         <button
           type="button"
           class="link danger"
-          on:click={() => onCancel(fetchingLeft ? 'left' : 'right')}
+          on:click={() => onCancel?.({ slot: fetchingLeft ? 'left' : 'right' })}
         >
           キャンセル
         </button>
@@ -125,10 +109,10 @@
       ></textarea>
     </FormField>
     <div class="wide form-actions">
-      <button type="button" class="link" on:click={onCopyLink}>
+      <button type="button" class="link" on:click={() => onCopyLink?.()}>
         共有リンクをコピー
       </button>
-      <button type="button" class="link" on:click={onClear}>
+      <button type="button" class="link" on:click={() => onClear?.()}>
         フォームをクリア
       </button>
     </div>

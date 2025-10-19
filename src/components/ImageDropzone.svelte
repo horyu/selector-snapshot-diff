@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
   type SlotDisplay = {
     url: string;
     name: string;
@@ -10,16 +8,15 @@
   export let left: SlotDisplay | null = null;
   export let right: SlotDisplay | null = null;
   export let ready = false;
-
-  const dispatch = createEventDispatcher<{
-    dropFiles: { files: File[] };
-    chooseFiles: { slot: 'left' | 'right'; files: File[] };
-    clearLeft: void;
-    clearRight: void;
-    reset: void;
-    swap: void;
-    openDiff: void;
-  }>();
+  export let onDropFiles: ((payload: { files: File[] }) => void) | undefined;
+  export let onChooseFiles:
+    | ((payload: { slot: 'left' | 'right'; files: File[] }) => void)
+    | undefined;
+  export let onClearLeft: (() => void) | undefined;
+  export let onClearRight: (() => void) | undefined;
+  export let onReset: (() => void) | undefined;
+  export let onSwap: (() => void) | undefined;
+  export let onOpenDiff: (() => void) | undefined;
 
   let dragOver = false;
   let leftInput: HTMLInputElement | null = null;
@@ -35,7 +32,7 @@
       const f = list.item(i);
       if (f) files.push(f);
     }
-    if (files.length > 0) dispatch('dropFiles', { files });
+    if (files.length > 0) onDropFiles?.({ files });
   }
 
   function handleDragOver(e: DragEvent) {
@@ -59,7 +56,7 @@
     const list = input?.files;
     if (!list || list.length === 0) return;
     const files = Array.from(list);
-    dispatch('chooseFiles', { slot, files });
+    onChooseFiles?.({ slot, files });
     if (input) input.value = '';
   }
 </script>
@@ -92,9 +89,7 @@
         <img src={left.url} alt={left.name} />
         <div class="slot-meta">
           <span title={left.name}>{left.name}</span>
-          <button
-            class="link"
-            on:click|stopPropagation={() => dispatch('clearLeft')}
+          <button class="link" on:click|stopPropagation={() => onClearLeft?.()}
             >クリア</button
           >
         </div>
@@ -118,9 +113,7 @@
         <img src={right.url} alt={right.name} />
         <div class="slot-meta">
           <span title={right.name}>{right.name}</span>
-          <button
-            class="link"
-            on:click|stopPropagation={() => dispatch('clearRight')}
+          <button class="link" on:click|stopPropagation={() => onClearRight?.()}
             >クリア</button
           >
         </div>
@@ -148,14 +141,14 @@
   />
 
   <div class="controls">
-    <button on:click={() => dispatch('reset')} disabled={!left && !right}
+    <button on:click={() => onReset?.()} disabled={!left && !right}
       >リセット</button
     >
-    <button on:click={() => dispatch('swap')} disabled={!left && !right}
+    <button on:click={() => onSwap?.()} disabled={!left && !right}
       >左右入れ替え</button
     >
     {#if ready}
-      <button on:click={() => dispatch('openDiff')}>差分を開く</button>
+      <button on:click={() => onOpenDiff?.()}>差分を開く</button>
     {/if}
   </div>
 </section>

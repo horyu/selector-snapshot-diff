@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   export let src: string;
   export let alt: string = '';
 
-  const dispatch = createEventDispatcher<{ close: void }>();
+  export let onClose: (() => void) | undefined;
   let dialogEl: HTMLDialogElement | null = null;
   let previousOverflow = '';
   let previousPadding = '';
@@ -37,14 +37,10 @@
     }
   });
 
-  function closeModal() {
-    dispatch('close');
-  }
-
   function onKeyDown(event: KeyboardEvent) {
     if (['Escape', 'Enter', ' '].includes(event.key)) {
       event.preventDefault();
-      closeModal();
+      onClose?.();
     }
   }
 </script>
@@ -52,7 +48,7 @@
 <dialog
   class="history-image-modal"
   bind:this={dialogEl}
-  on:click={closeModal}
+  on:click={() => onClose?.()}
   on:keydown={onKeyDown}
 >
   <img {src} {alt} />
