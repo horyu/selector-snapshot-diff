@@ -25,6 +25,13 @@ export default [
     rules: {
       // 空catchは許容
       'no-empty': ['warn', { allowEmptyCatch: true }],
+      // export した変数の型注釈内引数の誤検知を無効化
+      'no-unused-vars': [
+        'error',
+        {
+          args: 'none',
+        },
+      ],
     },
   },
   // TS/JS files
