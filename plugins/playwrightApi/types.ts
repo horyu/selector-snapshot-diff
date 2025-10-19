@@ -17,7 +17,7 @@ export type ErrorCode =
   | 'method_not_allowed'
   | 'invalid_payload'
   | 'selector_not_found'
-  | 'timeout'
+  | 'playwright_timeout'
   | 'internal_error';
 
 export type ErrorBody = {

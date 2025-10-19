@@ -1,5 +1,10 @@
 import { chromium } from 'playwright';
-import type { Browser, BrowserContextOptions, LaunchOptions } from 'playwright';
+import type {
+  Browser,
+  BrowserContextOptions,
+  ElementHandle,
+  LaunchOptions,
+} from 'playwright';
 import type { ScreenshotPayload } from './types';
 import { SelectorNotFoundError } from './errors';
 import { mergeHooks, type CaptureHooks } from './hooks';
@@ -76,7 +81,13 @@ export async function captureElementScreenshot(
     if (await checkAbort(shouldAbort)) return null;
 
     const selector = resolveSelector(payload);
-    const element = await page.waitForSelector(selector, { timeout });
+
+    let element: ElementHandle<SVGElement | HTMLElement> | null = null;
+    try {
+      element = await page.waitForSelector(selector, { timeout });
+    } catch {
+      /* ignore wait errors */
+    }
     if (!element) {
       throw new SelectorNotFoundError();
     }

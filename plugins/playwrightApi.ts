@@ -79,6 +79,7 @@ export default function playwrightApi(): Plugin {
             res.setHeader('Cache-Control', 'no-store');
             res.end(buffer);
           } catch (error) {
+            console.dir(error);
             if (clientClosed || res.writableEnded) {
               return;
             }
@@ -94,7 +95,7 @@ export default function playwrightApi(): Plugin {
             const { isTimeout, message, stack } =
               normalizePlaywrightError(error);
             if (isTimeout) {
-              sendError(res, 408, 'timeout', 'Timeout', {
+              sendError(res, 504, 'playwright_timeout', 'Timeout', {
                 message,
                 stack,
               });
