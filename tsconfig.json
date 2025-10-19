@@ -1,0 +1,20 @@
+﻿{
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "allowJs": false,
+    "checkJs": false,
+    "allowArbitraryExtensions": true,
+    "types": ["svelte", "node", "vite/client"],
+    "noImplicitAny": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "vite.config.ts",
+    "plugins/**/*.ts"
+  ]
+}
