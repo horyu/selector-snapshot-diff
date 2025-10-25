@@ -1,12 +1,29 @@
-<script lang="ts">
-  export let label: string;
-  export let description: string | null = null;
-  export let wide = false;
-  export let className = '';
-  export let required = false;
-  export let forId: string | null = null;
+<svelte:options runes />
 
-  $: rootClass = ['form-field', className].filter(Boolean).join(' ');
+<script lang="ts">
+  import type { Snippet } from 'svelte';
+
+  let {
+    label,
+    description = null,
+    wide = false,
+    className = '',
+    required = false,
+    forId = null,
+    children,
+  }: {
+    label: string;
+    description?: string | null;
+    wide?: boolean;
+    className?: string;
+    required?: boolean;
+    forId?: string | null;
+    children?: Snippet;
+  } = $props();
+
+  const rootClass = $derived(
+    ['form-field', className].filter(Boolean).join(' ')
+  );
 </script>
 
 <label class={rootClass} class:wide for={forId ?? undefined}>
@@ -16,7 +33,7 @@
       <span aria-hidden="true" class="required">*</span>
     {/if}
   </span>
-  <slot />
+  {@render children?.()}
   {#if description}
     <small>{description}</small>
   {/if}

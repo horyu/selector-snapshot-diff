@@ -1,6 +1,6 @@
 ## Playwright API（開発用）
 
-Vite の開発サーバに、要素スクリーンショットを返すエンドポイントを実装しています（Vite プラグイン）。
+Vite の開発サーバに、要素スクリーンショットを返すエンドポイントを実装しています（Vite プラグイン）。本リファレンスは Rune 対応後の依存注入構成を前提にしています。
 
 - エンドポイント: `POST /api/screenshot`
 - レスポンス: `image/png`（最初に一致した要素のスクリーンショット）
@@ -25,6 +25,20 @@ Vite の開発サーバに、要素スクリーンショットを返すエンド
 | `colorScheme` | `'light' \| 'dark' \| 'no-preference'` | メディア特性 `prefers-color-scheme` をエミュレート                                       |
 | `timeout`     | `number`                               | Playwright の操作タイムアウト（ミリ秒）。既定は 15,000ms（フォームからは送信されません） |
 
+### 実装構成と依存注入
+
+Rune 化に伴い、Playwright API プラグインは `plugins/playwrightApi/types.ts` で定義された型に従って依存を差し替えられるようになっています。
+
+| 役割               | 型                               | 説明                                                                                        |
+| ------------------ | -------------------------------- | ------------------------------------------------------------------------------------------- |
+| キャプチャ関数     | `ScreenshotCapturer`             | スクリーンショット取得ロジック（`createScreenshotCapturer` で生成）。テスト用に差し替え可能 |
+| Playwright 依存    | `CaptureDependencies`            | `BrowserLauncher`（`chromium.launch` 等）とベースフックをまとめた依存オブジェクト           |
+| フック             | `CaptureHooks`                   | `prepareBrowser` / `preparePage` / `beforeCapture` / `afterCapture` の各段階をカスタム      |
+| リクエストハンドラ | `createScreenshotRequestHandler` | HTTP レイヤを担当。`timeoutMs` や `logger` もオプションで注入                               |
+| プラグイン設定     | `PlaywrightApiOptions`           | `routePath` / `capture` / `hooks` / `timeoutMs` / `logger` をまとめた Vite プラグインの設定 |
+
+`playwrightApi.ts` では上記オプションを受け取り、既定値として `chromium.launch` を利用したキャプチャ関数を使用します。必要に応じてテスト専用のモックやトレースログを差し替える際は、`PlaywrightApiOptions` 経由で注入してください。
+
 ### 注意事項
 
 - タイムアウト（`timeout`）が未指定の場合は 15,000ms を使用します。正の数値を指定すると上書きできます（UI フォームからは送信されないため、API を直接呼ぶ場合のみ利用できます）。
@@ -32,10 +46,11 @@ Vite の開発サーバに、要素スクリーンショットを返すエンド
 - `waitFor` が空の場合でも、キャプチャ処理は `selector`（未指定時は `body`）を `page.waitForSelector` してから撮影します。
 - 起動オプションはネットワーク／セキュリティ動作に影響するため、ローカル開発環境での利用に限定してください。
 - フォーム下部の「共有リンクをコピー」から URL クエリ `pw` に Base64 でシリアライズしたリンクを生成できます。リンクを開くと設定が復元され、その後 `pw` は自動的に削除されます（機微情報は入力しないでください）。
+- ランタイムでエンドポイントが読み込まれるのは `pnpm run dev` 実行時だけです。ビルド成果物（`pnpm run build`／`pnpm run preview`）では有効化されません。クライアント側では `import.meta.env.DEV` で無効化ガードを行っています。
 
 ### カスタマイズ（Hooks）
 
-`plugins/playwrightApi/hooks.ts` に定義されたフックを編集すると、スクリーンショット取得フローの各段階を差し替えられます。
+`CaptureHooks` は以下の 4 つのタイミングを差し替えられます。
 
 - `prepareBrowser(launchOptions, payload)`：`chromium.launch` に渡すオプションを変更したいときに利用します。
 - `preparePage(page, payload, timeout)`：ページ表示前後の任意処理（ログイン、追加ナビゲーションなど）を差し込めます。
@@ -70,5 +85,6 @@ curl -X POST http://localhost:5173/api/screenshot \
 ### 実装ファイル
 
 - `plugins/playwrightApi.ts`
+- `plugins/playwrightApi/handler.ts`
 - `plugins/playwrightApi/` 配下のユーティリティ（`payload.ts`, `responses.ts`, `errors.ts`, `screenshot.ts`, `body.ts`, `types.ts`）
 - `vite.config.ts` にプラグインを登録済み

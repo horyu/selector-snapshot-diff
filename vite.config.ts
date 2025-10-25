@@ -3,7 +3,14 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import playwrightApi from './plugins/playwrightApi';
 
 export default defineConfig({
-  plugins: [svelte(), playwrightApi()],
+  plugins: [
+    svelte({
+      compilerOptions: {
+        runes: true,
+      },
+    }),
+    playwrightApi(),
+  ],
   server: {
     port: 5173,
     strictPort: true,

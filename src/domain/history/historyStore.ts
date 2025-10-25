@@ -1,4 +1,3 @@
-import { writable } from 'svelte/store';
 import type { HistoryEntry, SlotSnapshot } from './history';
 import {
   listHistoryEntries,
@@ -7,18 +6,35 @@ import {
   clearHistoryEntries,
 } from './history';
 
-const entriesStore = writable<HistoryEntry[]>([]);
+type HistorySubscriber = (value: HistoryEntry[]) => void;
+export type HistoryUnsubscriber = () => void;
+
+let entries: HistoryEntry[] = [];
 let loaded = false;
 let loadingPromise: Promise<HistoryEntry[]> | null = null;
+const subscribers = new Set<HistorySubscriber>();
 
-async function setEntries(entries: HistoryEntry[]): Promise<HistoryEntry[]> {
-  entriesStore.set(entries);
+function notifySubscribers(): void {
+  for (const subscriber of Array.from(subscribers)) {
+    subscriber(entries);
+  }
+}
+
+function setEntries(next: HistoryEntry[]): HistoryEntry[] {
+  entries = [...next];
   loaded = true;
+  notifySubscribers();
   return entries;
 }
 
-export function historyEntriesSubscribe(run: (value: HistoryEntry[]) => void) {
-  return entriesStore.subscribe(run);
+export function historyEntriesSubscribe(
+  run: HistorySubscriber
+): HistoryUnsubscriber {
+  run(entries);
+  subscribers.add(run);
+  return () => {
+    subscribers.delete(run);
+  };
 }
 
 export function isHistoryLoaded(): boolean {
@@ -27,10 +43,11 @@ export function isHistoryLoaded(): boolean {
 
 export async function loadHistoryEntries(): Promise<HistoryEntry[]> {
   if (!loadingPromise) {
-    loadingPromise = listHistoryEntries().then((entries) => {
-      loadingPromise = null;
-      return setEntries(entries);
-    });
+    loadingPromise = listHistoryEntries()
+      .then((result) => setEntries(result))
+      .finally(() => {
+        loadingPromise = null;
+      });
   }
   return loadingPromise;
 }

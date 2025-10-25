@@ -1,10 +1,7 @@
+<svelte:options runes />
+
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-
-  export let leftUrl: string;
-  export let rightUrl: string;
-  export let leftName: string = 'screenshot';
-  export let rightName: string = 'screenshot';
   import {
     alignImagesForDiff,
     createDiffMaskCanvas,
@@ -12,28 +9,41 @@
     downloadCanvasAsPng,
   } from '../domain/diff/diffProcessing';
   import { clamp } from '../util/clamp';
+  type Mode = 'overlay' | 'side-by-side' | 'swipe' | 'onion';
 
-  export let onClose: (() => void) | undefined;
-  let restoreBodyStyles: (() => void) | null = null;
+  let {
+    leftUrl,
+    rightUrl,
+    leftName = 'screenshot',
+    rightName = 'screenshot',
+    onClose,
+  }: {
+    leftUrl: string;
+    rightUrl: string;
+    leftName?: string;
+    rightName?: string;
+    onClose?: () => void;
+  } = $props();
 
-  let dx = 0; // px
-  let dy = 0; // px
+  let restoreBodyStyles = $state<(() => void) | null>(null);
+
+  let dx = $state(0); // px
+  let dy = $state(0); // px
   // 注意: filter はブレンド前に適用されるため、
   // 値を上げると「同一画像でも差分が出る」見え方になります。
   // 初期値は 1 にして、必要時のみ調整します。
-  let contrast = 1; // ~ 1-8
-  let brightness = 1; // ~ 0.5-4
+  let contrast = $state(1); // ~ 1-8
+  let brightness = $state(1); // ~ 0.5-4
   // 保存用のしきい値（0-255）。視覚強調と独立させる。
-  let threshold = 16;
+  let threshold = $state(16);
   // 表示モード
-  type Mode = 'overlay' | 'side-by-side' | 'swipe' | 'onion';
-  let mode: Mode = 'overlay';
-  let reveal = 50; // 0-100, swipe 用
-  let alpha = 0.5; // 0-1, onion 用
+  let mode = $state<Mode>('overlay');
+  let reveal = $state(50); // 0-100, swipe 用
+  let alpha = $state(0.5); // 0-1, onion 用
   // ズーム/パン
-  let zoom = 1; // 0.25 - 6
-  let panX = 0;
-  let panY = 0;
+  let zoom = $state(1); // 0.25 - 6
+  let panX = $state(0);
+  let panY = $state(0);
   function resetView() {
     zoom = 1;
     panX = 0;
@@ -45,7 +55,7 @@
     try {
       const raw = localStorage.getItem(VIEW_STATE_KEY);
       if (!raw) return;
-      const s = JSON.parse(raw);
+      const s = JSON.parse(raw) as Partial<ViewerPersistState>;
       if (s && typeof s === 'object') {
         if (
           s.mode === 'overlay' ||
@@ -68,53 +78,54 @@
       }
     } catch {}
   }
-  function saveViewState() {
+  type ViewerPersistState = {
+    mode: Mode;
+    contrast: number;
+    brightness: number;
+    threshold: number;
+    reveal: number;
+    alpha: number;
+    pmIncludeAA: boolean;
+    pmAlpha: number;
+  };
+  function saveViewState(state: ViewerPersistState) {
     try {
-      const obj = {
-        mode,
-        contrast,
-        brightness,
-        threshold,
-        reveal,
-        alpha,
-        pmIncludeAA,
-        pmAlpha,
-      };
-      localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(obj));
+      localStorage.setItem(VIEW_STATE_KEY, JSON.stringify(state));
     } catch {}
   }
 
   // Persist when controls change
-  $: {
-    (mode,
+  $effect(() => {
+    saveViewState({
+      mode,
       contrast,
       brightness,
       threshold,
       reveal,
       alpha,
       pmIncludeAA,
-      pmAlpha);
-    saveViewState();
-  }
+      pmAlpha,
+    });
+  });
 
-  let baseW = 0,
-    baseH = 0;
-  let overW = 0,
-    overH = 0;
-  let wrapW = 0,
-    wrapH = 0;
-  let wrapEl: HTMLDivElement | null = null;
-  let baseEl: HTMLImageElement | null = null;
-  let overEl: HTMLImageElement | null = null;
-  let viewerEl: HTMLDivElement | null = null;
-  let dragging = false;
-  let draggingMode: 'pan' | 'offset' | null = null;
-  let lastX = 0,
-    lastY = 0;
-  let startX = 0,
-    startY = 0;
-  let startDX = 0,
-    startDY = 0;
+  let baseW = $state(0);
+  let baseH = $state(0);
+  let overW = $state(0);
+  let overH = $state(0);
+  let wrapW = $state(0);
+  let wrapH = $state(0);
+  let wrapEl = $state<HTMLDivElement | null>(null);
+  let baseEl = $state<HTMLImageElement | null>(null);
+  let overEl = $state<HTMLImageElement | null>(null);
+  let viewerEl = $state<HTMLDivElement | null>(null);
+  let dragging = $state(false);
+  let draggingMode = $state<'pan' | 'offset' | null>(null);
+  let lastX = $state(0);
+  let lastY = $state(0);
+  let startX = $state(0);
+  let startY = $state(0);
+  let startDX = $state(0);
+  let startDY = $state(0);
 
   function updateWrapSize() {
     // 基準: 2枚の自然サイズ。オフセットで正側に広がる分は考慮。
@@ -172,8 +183,8 @@
   }
 
   // pixelmatch options
-  let pmIncludeAA = true;
-  let pmAlpha = 1;
+  let pmIncludeAA = $state(true);
+  let pmAlpha = $state(1);
 
   onMount(() => {
     // フォーカスをモーダルに
@@ -285,13 +296,13 @@
     role="dialog"
     aria-modal="true"
     aria-label="差分ビューア"
-    on:keydown={onKey}
+    onkeydown={onKey}
     tabindex="0"
     bind:this={wrapEl}
   >
     <header class="modal-header">
       <h2>差分ビューア</h2>
-      <button class="icon" on:click={() => onClose?.()} aria-label="閉じる"
+      <button class="icon" onclick={() => onClose?.()} aria-label="閉じる"
         >✕</button
       >
     </header>
@@ -301,11 +312,11 @@
           ? 'grabbing'
           : ''} {draggingMode === 'offset' ? 'moving' : ''}"
         bind:this={viewerEl}
-        on:wheel={onWheel}
-        on:pointerdown={onPointerDown}
-        on:pointermove={onPointerMove}
-        on:pointerup={onPointerUp}
-        on:pointerleave={onPointerUp}
+        onwheel={onWheel}
+        onpointerdown={onPointerDown}
+        onpointermove={onPointerMove}
+        onpointerup={onPointerUp}
+        onpointerleave={onPointerUp}
         style={`--dx:${dx}px; --dy:${dy}px; --contrast:${contrast}; --brightness:${brightness}; --alpha:${alpha}; --reveal:${reveal}%`}
       >
         <div
@@ -336,7 +347,7 @@
                 bind:this={baseEl}
                 src={leftUrl}
                 alt="base"
-                on:load={onBaseLoad}
+                onload={onBaseLoad}
                 draggable="false"
               />
               {#if mode === 'overlay'}
@@ -345,7 +356,7 @@
                   bind:this={overEl}
                   src={rightUrl}
                   alt="overlay"
-                  on:load={onOverLoad}
+                  onload={onOverLoad}
                   draggable="false"
                 />
               {:else if mode === 'onion'}
@@ -354,7 +365,7 @@
                   bind:this={overEl}
                   src={rightUrl}
                   alt="overlay"
-                  on:load={onOverLoad}
+                  onload={onOverLoad}
                   draggable="false"
                 />
               {:else if mode === 'swipe'}
@@ -363,7 +374,7 @@
                   bind:this={overEl}
                   src={rightUrl}
                   alt="overlay"
-                  on:load={onOverLoad}
+                  onload={onOverLoad}
                   draggable="false"
                 />
                 <div
@@ -508,12 +519,12 @@
 
         <div class="group button-rows">
           <div class="button-row">
-            <button on:click={resetOffsets}>オフセットをリセット</button>
-            <button on:click={resetView}>表示をリセット</button>
+            <button onclick={resetOffsets}>オフセットをリセット</button>
+            <button onclick={resetView}>表示をリセット</button>
           </div>
           <div class="button-row">
-            <button on:click={saveDiffMask}>左右マスクを保存</button>
-            <button on:click={saveTriptych}>横並び比較を保存</button>
+            <button onclick={saveDiffMask}>左右マスクを保存</button>
+            <button onclick={saveTriptych}>横並び比較を保存</button>
           </div>
         </div>
         <div class="hint">
@@ -525,7 +536,7 @@
   </div>
   <div
     class="modal-clickout"
-    on:click={() => onClose?.()}
+    onclick={() => onClose?.()}
     aria-hidden="true"
   ></div>
 </div>

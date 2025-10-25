@@ -1,28 +1,47 @@
+<svelte:options runes />
+
 <script lang="ts">
   import FormField from './FormField.svelte';
 
-  export let url = '';
-  export let selector = '';
-  export let ua = '';
-  export let viewportWidth = '';
-  export let viewportHeight = '';
-  export let waitFor = '';
-  export let requestTimeout = '15000';
-  export let colorScheme = '';
-  export let args = '';
-  export let fetchingLeft = false;
-  export let fetchingRight = false;
-  export let urlInputRef: HTMLInputElement | null = null;
-  export let selectorInputRef: HTMLInputElement | null = null;
-  export let onFetch:
-    | ((payload: { slot: 'left' | 'right' }) => void)
-    | undefined;
-  export let onClear: (() => void) | undefined;
-  export let onCopyLink: (() => void) | undefined;
-  export let onCancel:
-    | ((payload: { slot: 'left' | 'right' }) => void)
-    | undefined;
-  const argsPlaceholder = `例: --disable-web-security\n      --host-resolver-rules="MAP example.com 127.0.0.1"`;
+  let {
+    url = $bindable(''),
+    selector = $bindable(''),
+    ua = $bindable(''),
+    viewportWidth = $bindable(''),
+    viewportHeight = $bindable(''),
+    waitFor = $bindable(''),
+    requestTimeout = $bindable('15000'),
+    colorScheme = $bindable(''),
+    args = $bindable(''),
+    fetchingLeft = false,
+    fetchingRight = false,
+    urlInputRef = $bindable<HTMLInputElement | null>(null),
+    selectorInputRef = $bindable<HTMLInputElement | null>(null),
+    onFetch,
+    onClear,
+    onCopyLink,
+    onCancel,
+  }: {
+    url?: string;
+    selector?: string;
+    ua?: string;
+    viewportWidth?: string;
+    viewportHeight?: string;
+    waitFor?: string;
+    requestTimeout?: string;
+    colorScheme?: string;
+    args?: string;
+    fetchingLeft?: boolean;
+    fetchingRight?: boolean;
+    urlInputRef?: HTMLInputElement | null;
+    selectorInputRef?: HTMLInputElement | null;
+    onFetch?: (payload: { slot: 'left' | 'right' }) => void;
+    onClear?: () => void;
+    onCopyLink?: () => void;
+    onCancel?: (payload: { slot: 'left' | 'right' }) => void;
+  } = $props();
+  const argsPlaceholder = `Example: --disable-web-security
+      --host-resolver-rules="MAP example.com 127.0.0.1"`;
 </script>
 
 <section class="api-box" aria-label="対象スクリーンショット取得（Playwright）">
@@ -45,18 +64,18 @@
     </FormField>
     <div class="buttons">
       <button
-        on:click={() => onFetch?.({ slot: 'left' })}
+        onclick={() => onFetch?.({ slot: 'left' })}
         disabled={fetchingLeft || fetchingRight}>左に取得</button
       >
       <button
-        on:click={() => onFetch?.({ slot: 'right' })}
+        onclick={() => onFetch?.({ slot: 'right' })}
         disabled={fetchingLeft || fetchingRight}>右に取得</button
       >
       {#if fetchingLeft || fetchingRight}
         <button
           type="button"
           class="link danger"
-          on:click={() => onCancel?.({ slot: fetchingLeft ? 'left' : 'right' })}
+          onclick={() => onCancel?.({ slot: fetchingLeft ? 'left' : 'right' })}
         >
           キャンセル
         </button>
@@ -109,10 +128,10 @@
       ></textarea>
     </FormField>
     <div class="wide form-actions">
-      <button type="button" class="link" on:click={() => onCopyLink?.()}>
+      <button type="button" class="link" onclick={() => onCopyLink?.()}>
         共有リンクをコピー
       </button>
-      <button type="button" class="link" on:click={() => onClear?.()}>
+      <button type="button" class="link" onclick={() => onClear?.()}>
         フォームをクリア
       </button>
     </div>

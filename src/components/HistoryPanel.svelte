@@ -1,3 +1,5 @@
+<svelte:options runes />
+
 <script lang="ts">
   import type {
     HistoryEntry,
@@ -6,23 +8,37 @@
   } from '../domain/history/history';
   import { MAX_HISTORY_ENTRIES } from '../domain/history/history';
 
-  export let entries: HistoryEntry[] = [];
-  export let loaded = false;
-  export let error = '';
-  export let saving = false;
-  export let busyIds: string[] = [];
-  export let previews: Record<string, string> = {};
-  export let onDeleteEntry: ((entry: HistoryEntry) => void) | undefined;
-  export let onLoadImage:
-    | ((payload: { entry: HistoryEntry; slot: 'left' | 'right' }) => void)
-    | undefined;
-  export let onApplyPlaywrightForm:
-    | ((state: PlaywrightFormState) => void)
-    | undefined;
-  export let onClearAll: (() => void) | undefined;
-  export let onPreviewImage:
-    | ((payload: { entry: HistoryEntry; blobUrl?: string }) => void)
-    | undefined;
+  let {
+    entries = [] as HistoryEntry[],
+    loaded = false,
+    error = '',
+    saving = false,
+    busyIds = [] as string[],
+    previews = {} as Record<string, string>,
+    onDeleteEntry,
+    onLoadImage,
+    onApplyPlaywrightForm,
+    onClearAll,
+    onPreviewImage,
+  }: {
+    entries?: HistoryEntry[];
+    loaded?: boolean;
+    error?: string;
+    saving?: boolean;
+    busyIds?: string[];
+    previews?: Record<string, string>;
+    onDeleteEntry?: (entry: HistoryEntry) => void;
+    onLoadImage?: (payload: {
+      entry: HistoryEntry;
+      slot: 'left' | 'right';
+    }) => void;
+    onApplyPlaywrightForm?: (state: PlaywrightFormState) => void;
+    onClearAll?: () => void;
+    onPreviewImage?: (payload: {
+      entry: HistoryEntry;
+      blobUrl?: string;
+    }) => void;
+  } = $props();
 
   const historyDateFormatter = new Intl.DateTimeFormat('ja-JP', {
     year: 'numeric',
@@ -115,7 +131,7 @@
     <button
       type="button"
       class="link danger history-clear-all"
-      on:click={handleClearAll}
+      onclick={handleClearAll}
       disabled={saving || entries.length === 0}
     >
       全削除
@@ -135,7 +151,7 @@
         <li class="history-item">
           <button
             class="history-preview"
-            on:click={() =>
+            onclick={() =>
               onPreviewImage?.({
                 entry,
                 blobUrl: previews[entry.id],
@@ -175,7 +191,7 @@
                     {@const pwSourceHeader = entry.image.source}
                     <button
                       class="link"
-                      on:click={() =>
+                      onclick={() =>
                         onApplyPlaywrightForm?.(pwSourceHeader.form)}
                     >
                       設定を復元
@@ -185,7 +201,7 @@
               </div>
               <button
                 class="link danger"
-                on:click={() => onDeleteEntry?.(entry)}
+                onclick={() => onDeleteEntry?.(entry)}
                 disabled={isEntryBusy(entry.id) || saving}
               >
                 削除
@@ -222,13 +238,13 @@
             </div>
             <div class="history-actions">
               <button
-                on:click={() => onLoadImage?.({ entry, slot: 'left' })}
+                onclick={() => onLoadImage?.({ entry, slot: 'left' })}
                 disabled={isEntryBusy(entry.id) || saving}
               >
                 左に読み込む
               </button>
               <button
-                on:click={() => onLoadImage?.({ entry, slot: 'right' })}
+                onclick={() => onLoadImage?.({ entry, slot: 'right' })}
                 disabled={isEntryBusy(entry.id) || saving}
               >
                 右に読み込む

@@ -1,3 +1,5 @@
+<svelte:options runes />
+
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
   import DiffModal from './components/DiffModal.svelte';
@@ -14,7 +16,6 @@
     createFormSnapshot,
     buildScreenshotPayload,
   } from './domain/playwright/config';
-  import type { Unsubscriber } from 'svelte/store';
   import {
     defaultFormState,
     loadFormState,
@@ -58,50 +59,53 @@
     clearAllHistoryEntries,
     isHistoryLoaded as historyStoreLoaded,
   } from './domain/history/historyStore';
+  import type { HistoryUnsubscriber } from './domain/history/historyStore';
+  import { createSnapshotPersistAction } from './actions/persistSnapshot';
 
-  let errorMsg = '';
+  let errorMsg = $state('');
 
-  let left: ImgSlot = null; // base
-  let right: ImgSlot = null; // overlay
+  let left = $state<ImgSlot | null>(null); // base
+  let right = $state<ImgSlot | null>(null); // overlay
 
-  let {
-    url: urlInput,
-    selector: selectorInput,
-    args: argsInput,
-    ua: uaInput,
-    vw: vwInput,
-    vh: vhInput,
-    waitFor: waitForInput,
-    requestTimeout: requestTimeoutInput,
-    colorScheme: colorSchemeInput,
-  } = { ...defaultFormState };
-  let fetchingLeft = false;
-  let fetchingRight = false;
+  let urlInput = $state(defaultFormState.url);
+  let selectorInput = $state(defaultFormState.selector);
+  let argsInput = $state(defaultFormState.args);
+  let uaInput = $state(defaultFormState.ua);
+  let vwInput = $state(defaultFormState.vw);
+  let vhInput = $state(defaultFormState.vh);
+  let waitForInput = $state(defaultFormState.waitFor);
+  let requestTimeoutInput = $state(defaultFormState.requestTimeout);
+  let colorSchemeInput = $state(defaultFormState.colorScheme);
+  let fetchingLeft = $state(false);
+  let fetchingRight = $state(false);
   const abortControllers: Record<'left' | 'right', AbortController | null> = {
     left: null,
     right: null,
   };
   type ApiError = { status: number; message: string; stack?: string };
-  let lastError: ApiError | null = null;
-  let urlInputEl: HTMLInputElement;
-  let selectorInputEl: HTMLInputElement;
+  let lastError = $state<ApiError | null>(null);
+  let urlInputEl = $state<HTMLInputElement | null>(null);
+  let selectorInputEl = $state<HTMLInputElement | null>(null);
 
-  let historyEntries: HistoryEntry[] = [];
-  let historyLoaded = false;
-  let historyError = '';
-  let historySaving = false;
-  let historySavingCount = 0;
-  let entryBusy: string[] = [];
+  let historyEntries = $state<HistoryEntry[]>([]);
+  let historyLoaded = $state(false);
+  let historyError = $state('');
+  let historySaving = $state(false);
+  let historySavingCount = $state(0);
+  let entryBusy = $state<string[]>([]);
   let suppressHistoryPersist = false;
-  let historyPreviews: HistoryPreviewMap = {};
-  let historyStoreUnsubscribe: Unsubscriber | null = null;
-  let infoMsg = '';
+  let historyPreviews = $state<HistoryPreviewMap>({});
+  let historyStoreUnsubscribe: HistoryUnsubscriber | null = null;
+  let infoMsg = $state('');
   let lastPersistedState: StoredFormState = { ...defaultFormState };
-  let previewImage: {
+  let previewImage = $state<{
     src: string;
     label: string;
     cleanup?: () => void;
-  } | null = null;
+  } | null>(null);
+  const ready = $derived(!!left && !!right);
+  let showDiff = $state(false);
+  let autoOpened = $state(false);
 
   const assignFormState = (state: StoredFormState) => {
     urlInput = state.url;
@@ -135,10 +139,29 @@
     a.waitFor === b.waitFor &&
     a.requestTimeout === b.requestTimeout &&
     a.colorScheme === b.colorScheme;
+  const cloneStoredState = (state: StoredFormState): StoredFormState => ({
+    ...state,
+  });
+  const formStatePersistence = createSnapshotPersistAction<StoredFormState>({
+    getSnapshot: currentFormState,
+    onPersist: (next) => {
+      lastPersistedState = cloneStoredState(next);
+      saveFormState(lastPersistedState);
+    },
+    compare: statesEqual,
+    clone: cloneStoredState,
+    initial: lastPersistedState,
+  });
+  const persistForm = formStatePersistence.action;
+  const setPersistBaseline = (state: StoredFormState) => {
+    lastPersistedState = cloneStoredState(state);
+    formStatePersistence.setBaseline(lastPersistedState);
+  };
   async function clearSavedAppState() {
     clearFormState();
-    assignFormState({ ...defaultFormState });
-    lastPersistedState = { ...defaultFormState };
+    const nextState = { ...defaultFormState };
+    assignFormState(nextState);
+    setPersistBaseline(nextState);
     await tick();
     infoMsg = '';
     urlInputEl?.focus();
@@ -181,7 +204,7 @@
       colorScheme: form.colorScheme ?? '',
     };
     assignFormState(next);
-    lastPersistedState = { ...next };
+    setPersistBaseline(next);
     saveFormState(lastPersistedState);
     await tick();
     if (urlInputEl) {
@@ -319,12 +342,12 @@
   onMount(() => {
     const storedState = loadFormState();
     assignFormState(storedState);
-    lastPersistedState = { ...storedState };
+    setPersistBaseline(storedState);
 
     const queryState = readFormStateFromUrl();
     if (queryState) {
       assignFormState(queryState);
-      lastPersistedState = { ...queryState };
+      setPersistBaseline(queryState);
       saveFormState(queryState);
       removeFormStateFromUrl();
     }
@@ -342,23 +365,6 @@
       resetHistoryPreviews(historyEntries);
     }
   });
-  function persistForm(node: HTMLElement) {
-    const handler = () => {
-      const next = currentFormState();
-      if (!statesEqual(lastPersistedState, next)) {
-        lastPersistedState = { ...next };
-        saveFormState(lastPersistedState);
-      }
-    };
-    node.addEventListener('input', handler, true);
-    node.addEventListener('change', handler, true);
-    return {
-      destroy() {
-        node.removeEventListener('input', handler, true);
-        node.removeEventListener('change', handler, true);
-      },
-    };
-  }
 
   async function copyShareLink(): Promise<void> {
     const state = currentFormState();
@@ -605,17 +611,16 @@
     revokeItem(right);
   });
 
-  $: ready = !!left && !!right;
-  let showDiff = false;
-  let autoOpened = false;
-  $: if (ready && !showDiff && !autoOpened) {
-    // 2枚揃ったら一度だけ自動で開く
-    showDiff = true;
-    autoOpened = true;
-  }
+  $effect(() => {
+    if (ready && !showDiff && !autoOpened) {
+      // auto open diff modal once both slots have images
+      showDiff = true;
+      autoOpened = true;
+    }
+  });
 </script>
 
-<svelte:window on:paste={onPaste} />
+<svelte:window onpaste={onPaste} />
 
 <main>
   <header>
@@ -656,7 +661,7 @@
         type="button"
         class="message-close"
         aria-label="エラーを閉じる"
-        on:click={dismissError}
+        onclick={dismissError}
       >
         ×
       </button>
@@ -676,7 +681,7 @@
         type="button"
         class="message-close"
         aria-label="メッセージを閉じる"
-        on:click={dismissInfo}
+        onclick={dismissInfo}
       >
         ×
       </button>

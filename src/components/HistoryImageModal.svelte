@@ -1,11 +1,18 @@
+<svelte:options runes />
+
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
 
-  export let src: string;
-  export let alt: string = '';
-
-  export let onClose: (() => void) | undefined;
-  let dialogEl: HTMLDialogElement | null = null;
+  let {
+    src,
+    alt = '',
+    onClose,
+  }: {
+    src: string;
+    alt?: string;
+    onClose?: () => void;
+  } = $props();
+  let dialogEl = $state<HTMLDialogElement | null>(null);
   let previousOverflow = '';
   let previousPadding = '';
   let previousTouchAction = '';
@@ -48,8 +55,8 @@
 <dialog
   class="history-image-modal"
   bind:this={dialogEl}
-  on:click={() => onClose?.()}
-  on:keydown={onKeyDown}
+  onclick={() => onClose?.()}
+  onkeydown={onKeyDown}
 >
   <img {src} {alt} />
 </dialog>

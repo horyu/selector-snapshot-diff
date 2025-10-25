@@ -5,18 +5,18 @@ import type {
   ElementHandle,
   LaunchOptions,
 } from 'playwright';
-import type { ScreenshotPayload } from './types';
+import type {
+  AbortCheck,
+  CaptureDependencies,
+  CaptureHooks,
+  CaptureOptions,
+  ScreenshotCapturer,
+  ScreenshotPayload,
+} from './types';
 import { SelectorNotFoundError } from './errors';
-import { mergeHooks, type CaptureHooks } from './hooks';
-
-type AbortCheck = () => boolean | Promise<boolean>;
+import { mergeHooks } from './hooks';
 
 export const DEFAULT_TIMEOUT_MS = 15000;
-
-export type CaptureOptions = {
-  timeoutMs?: number;
-  shouldAbort?: AbortCheck;
-};
 
 const resolveSelector = (payload: ScreenshotPayload): string => {
   const raw =
@@ -37,75 +37,86 @@ const checkAbort = async (fn: AbortCheck): Promise<boolean> => {
   }
 };
 
-export async function captureElementScreenshot(
-  payload: ScreenshotPayload,
-  options: CaptureOptions = {},
-  hooks?: CaptureHooks
-): Promise<Buffer | null> {
-  const shouldAbort = ensureAbortCheck(options.shouldAbort);
-  const timeout =
-    options.timeoutMs ??
-    (typeof payload.timeout === 'number'
-      ? payload.timeout
-      : DEFAULT_TIMEOUT_MS);
+export function createScreenshotCapturer({
+  browser,
+  hooks: baseHooks,
+}: CaptureDependencies): ScreenshotCapturer {
+  const preparedBaseHooks = mergeHooks(baseHooks);
 
-  const mergedHooks = mergeHooks(hooks);
+  return async (
+    payload: ScreenshotPayload,
+    options: CaptureOptions = {},
+    runtimeHooks?: CaptureHooks
+  ): Promise<Buffer | null> => {
+    const shouldAbort = ensureAbortCheck(options.shouldAbort);
+    const timeout =
+      options.timeoutMs ??
+      (typeof payload.timeout === 'number'
+        ? payload.timeout
+        : DEFAULT_TIMEOUT_MS);
 
-  let browser: Browser | null = null;
+    const mergedHooks = mergeHooks(preparedBaseHooks, runtimeHooks);
 
-  try {
-    const launchOptions: LaunchOptions = {
-      headless: true,
-    };
-    if (payload.args?.length) {
-      launchOptions.args = payload.args;
-    }
-    await mergedHooks.prepareBrowser(launchOptions, payload);
-    if (await checkAbort(shouldAbort)) return null;
+    let launchedBrowser: Browser | null = null;
 
-    browser = await chromium.launch(launchOptions);
-    if (await checkAbort(shouldAbort)) return null;
-
-    const contextOptions: BrowserContextOptions = {};
-    if (payload.userAgent) contextOptions.userAgent = payload.userAgent;
-    if (payload.viewport) contextOptions.viewport = payload.viewport;
-    if (payload.colorScheme) contextOptions.colorScheme = payload.colorScheme;
-
-    const context = await browser.newContext(contextOptions);
-    const page = await context.newPage();
-
-    await mergedHooks.preparePage(page, payload, timeout);
-    if (await checkAbort(shouldAbort)) return null;
-
-    await mergedHooks.beforeCapture(page, payload, timeout);
-    if (await checkAbort(shouldAbort)) return null;
-
-    const selector = resolveSelector(payload);
-
-    let element: ElementHandle<SVGElement | HTMLElement> | null = null;
     try {
-      element = await page.waitForSelector(selector, { timeout });
-    } catch {
-      /* ignore wait errors */
-    }
-    if (!element) {
-      throw new SelectorNotFoundError();
-    }
-    if (await checkAbort(shouldAbort)) return null;
+      const launchOptions: LaunchOptions = {
+        headless: true,
+      };
+      if (payload.args?.length) {
+        launchOptions.args = payload.args;
+      }
+      await mergedHooks.prepareBrowser(launchOptions, payload);
+      if (await checkAbort(shouldAbort)) return null;
 
-    let buffer = await element.screenshot({ type: 'png' });
-    const modified = await mergedHooks.afterCapture(page, payload, buffer);
-    if (modified instanceof Buffer) {
-      buffer = modified;
-    }
-    return buffer;
-  } finally {
-    if (browser) {
+      launchedBrowser = await browser.launch(launchOptions);
+      if (await checkAbort(shouldAbort)) return null;
+
+      const contextOptions: BrowserContextOptions = {};
+      if (payload.userAgent) contextOptions.userAgent = payload.userAgent;
+      if (payload.viewport) contextOptions.viewport = payload.viewport;
+      if (payload.colorScheme) contextOptions.colorScheme = payload.colorScheme;
+
+      const context = await launchedBrowser.newContext(contextOptions);
+      const page = await context.newPage();
+
+      await mergedHooks.preparePage(page, payload, timeout);
+      if (await checkAbort(shouldAbort)) return null;
+
+      await mergedHooks.beforeCapture(page, payload, timeout);
+      if (await checkAbort(shouldAbort)) return null;
+
+      const selector = resolveSelector(payload);
+
+      let element: ElementHandle<SVGElement | HTMLElement> | null = null;
       try {
-        await browser.close();
+        element = await page.waitForSelector(selector, { timeout });
       } catch {
-        /* ignore close errors */
+        /* ignore wait errors */
+      }
+      if (!element) {
+        throw new SelectorNotFoundError();
+      }
+      if (await checkAbort(shouldAbort)) return null;
+
+      let buffer = await element.screenshot({ type: 'png' });
+      const modified = await mergedHooks.afterCapture(page, payload, buffer);
+      if (modified instanceof Buffer) {
+        buffer = modified;
+      }
+      return buffer;
+    } finally {
+      if (launchedBrowser) {
+        try {
+          await launchedBrowser.close();
+        } catch {
+          /* ignore close errors */
+        }
       }
     }
-  }
+  };
 }
+
+export const captureElementScreenshot = createScreenshotCapturer({
+  browser: chromium,
+});

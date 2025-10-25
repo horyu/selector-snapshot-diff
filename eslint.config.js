@@ -16,7 +16,12 @@ export default [
   {
     files: ['**/*.svelte'],
     languageOptions: {
-      parserOptions: { parser: tsParser },
+      parserOptions: {
+        parser: tsParser,
+        svelteFeatures: {
+          runes: true, // Enable Svelte Runes syntax for linting
+        },
+      },
       globals: {
         ...globals.browser,
         Buffer: 'readonly', // Node.js global if needed

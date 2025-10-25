@@ -1,3 +1,5 @@
+<svelte:options runes />
+
 <script lang="ts">
   type SlotDisplay = {
     url: string;
@@ -5,22 +7,36 @@
     label: string;
   };
 
-  export let left: SlotDisplay | null = null;
-  export let right: SlotDisplay | null = null;
-  export let ready = false;
-  export let onDropFiles: ((payload: { files: File[] }) => void) | undefined;
-  export let onChooseFiles:
-    | ((payload: { slot: 'left' | 'right'; files: File[] }) => void)
-    | undefined;
-  export let onClearLeft: (() => void) | undefined;
-  export let onClearRight: (() => void) | undefined;
-  export let onReset: (() => void) | undefined;
-  export let onSwap: (() => void) | undefined;
-  export let onOpenDiff: (() => void) | undefined;
+  let {
+    left = null,
+    right = null,
+    ready = false,
+    onDropFiles,
+    onChooseFiles,
+    onClearLeft,
+    onClearRight,
+    onReset,
+    onSwap,
+    onOpenDiff,
+  }: {
+    left?: SlotDisplay | null;
+    right?: SlotDisplay | null;
+    ready?: boolean;
+    onDropFiles?: (payload: { files: File[] }) => void;
+    onChooseFiles?: (payload: {
+      slot: 'left' | 'right';
+      files: File[];
+    }) => void;
+    onClearLeft?: () => void;
+    onClearRight?: () => void;
+    onReset?: () => void;
+    onSwap?: () => void;
+    onOpenDiff?: () => void;
+  } = $props();
 
-  let dragOver = false;
-  let leftInput: HTMLInputElement | null = null;
-  let rightInput: HTMLInputElement | null = null;
+  let dragOver = $state(false);
+  let leftInput = $state<HTMLInputElement | null>(null);
+  let rightInput = $state<HTMLInputElement | null>(null);
 
   function handleDrop(e: DragEvent) {
     e.preventDefault();
@@ -28,11 +44,13 @@
     const list = e.dataTransfer?.files;
     if (!list || list.length === 0) return;
     const files: File[] = [];
-    for (let i = 0; i < list.length; i++) {
+    for (let i = 0; i < list.length; i += 1) {
       const f = list.item(i);
       if (f) files.push(f);
     }
-    if (files.length > 0) onDropFiles?.({ files });
+    if (files.length > 0) {
+      onDropFiles?.({ files });
+    }
   }
 
   function handleDragOver(e: DragEvent) {
@@ -57,28 +75,30 @@
     if (!list || list.length === 0) return;
     const files = Array.from(list);
     onChooseFiles?.({ slot, files });
-    if (input) input.value = '';
+    if (input) {
+      input.value = '';
+    }
   }
 </script>
 
 <section
   class="dropzone {dragOver ? 'over' : ''}"
-  aria-label="画像入力"
-  on:drop={handleDrop}
-  on:dragover={handleDragOver}
-  on:dragleave={handleDragLeave}
+  aria-label="画像を追加"
+  ondrop={handleDrop}
+  ondragover={handleDragOver}
+  ondragleave={handleDragLeave}
 >
   <p>
     ここに画像をドラッグ＆ドロップ / クリックでファイルを選択 /
-    クリップボードから貼り付け（png/jpeg/webp）
+    クリップボードから貼り付け (png/jpeg/webp)
   </p>
   <div class="slots">
     <div
       class="slot"
       role="button"
       tabindex="0"
-      on:click={() => triggerChooser('left')}
-      on:keydown={(e) => {
+      onclick={() => triggerChooser('left')}
+      onkeydown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           triggerChooser('left');
@@ -89,9 +109,15 @@
         <img src={left.url} alt={left.name} />
         <div class="slot-meta">
           <span title={left.name}>{left.name}</span>
-          <button class="link" on:click|stopPropagation={() => onClearLeft?.()}
-            >クリア</button
+          <button
+            class="link"
+            onclick={(event) => {
+              event.stopPropagation();
+              onClearLeft?.();
+            }}
           >
+            クリア
+          </button>
         </div>
       {:else}
         <div class="placeholder">左（基準）</div>
@@ -101,8 +127,8 @@
       class="slot"
       role="button"
       tabindex="0"
-      on:click={() => triggerChooser('right')}
-      on:keydown={(e) => {
+      onclick={() => triggerChooser('right')}
+      onkeydown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           triggerChooser('right');
@@ -113,9 +139,15 @@
         <img src={right.url} alt={right.name} />
         <div class="slot-meta">
           <span title={right.name}>{right.name}</span>
-          <button class="link" on:click|stopPropagation={() => onClearRight?.()}
-            >クリア</button
+          <button
+            class="link"
+            onclick={(event) => {
+              event.stopPropagation();
+              onClearRight?.();
+            }}
           >
+            クリア
+          </button>
         </div>
       {:else}
         <div class="placeholder">右（比較）</div>
@@ -129,7 +161,7 @@
     accept="image/png,image/jpeg,image/webp"
     hidden
     bind:this={leftInput}
-    on:change={() => handleFileSelection(leftInput, 'left')}
+    onchange={() => handleFileSelection(leftInput, 'left')}
   />
   <input
     class="file-input"
@@ -137,18 +169,18 @@
     accept="image/png,image/jpeg,image/webp"
     hidden
     bind:this={rightInput}
-    on:change={() => handleFileSelection(rightInput, 'right')}
+    onchange={() => handleFileSelection(rightInput, 'right')}
   />
 
   <div class="controls">
-    <button on:click={() => onReset?.()} disabled={!left && !right}
-      >リセット</button
-    >
-    <button on:click={() => onSwap?.()} disabled={!left && !right}
-      >左右入れ替え</button
-    >
+    <button onclick={() => onReset?.()} disabled={!left && !right}>
+      リセット
+    </button>
+    <button onclick={() => onSwap?.()} disabled={!left && !right}>
+      左右入れ替え
+    </button>
     {#if ready}
-      <button on:click={() => onOpenDiff?.()}>差分を開く</button>
+      <button onclick={() => onOpenDiff?.()}>差分を開く</button>
     {/if}
   </div>
 </section>

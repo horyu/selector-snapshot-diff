@@ -47,11 +47,21 @@ pnpm run dev
 
 ## システム構成
 
-- **クライアント**：Vite 7 + Svelte（TypeScript, strict モード）
+- **クライアント**：Vite 7 + Svelte 5（Runes 有効、TypeScript / strict モード）
+- **Svelte 設定**：全コンポーネントに `<svelte:options runes />` を明示しつつ、`svelte.config.js` の `compilerOptions.runes = true` で Rune モードをプロジェクト全体に適用
 - **スタイリング**：プレーン CSS
 - **Lint / Format**：ESLint / `pnpm run format`
 - **履歴保存**：`src/domain/history/history.ts` で IndexedDB を利用
-- **Playwright API**：`plugins/playwrightApi.ts` と同階層のユーティリティ群が Vite の dev サーバーに `/api/screenshot` エンドポイントを追加（開発時のみ）
+- **Playwright API**：`createScreenshotCapturer` + `createScreenshotRequestHandler` による依存注入可能な構成。`plugins/playwrightApi.ts` が Vite dev サーバーに `/api/screenshot` エンドポイントを追加（開発時のみ）
+
+---
+
+## Rune モードのポイント
+
+- 画面状態は `$state` / `$derived` / `$effect` を中心に管理し、従来の Svelte store への依存はドメイン層のカスタム購読（例: `historyStore`) やフォームの `createSnapshotPersistAction` に置き換えています。
+- フォーム永続化は `src/actions/persistSnapshot.ts` のアクションを通じて行い、`localStorage` との同期を Rune のリアクティブ文脈から分離しています。
+- 共有リンクや履歴復元などの副作用は `$effect.root` 内で AbortController／URL revoke を管理し、メモリリークを防止しています。
+- Playwright API 連携も `plugins/playwrightApi/types.ts` に型を集約し、`createScreenshotCapturer` + `createScreenshotRequestHandler` で依存（ブラウザランチャー／フック／ロガー）を注入できる構成に更新済みです。
 
 ---
 
@@ -132,6 +142,7 @@ pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 
 Playwright フォームの下部にある「共有リンクをコピー」ボタンから、URL パラメータ `pw` に Base64 でシリアライズしたリンクを生成できます。リンクを開くとフォーム設定が復元され、その後 `pw` パラメータは自動的に削除されます（機微情報は入力しないでください）。
 
+- 依存注入：`plugins/playwrightApi/types.ts` で定義された `PlaywrightApiOptions` により、キャプチャ関数（`ScreenshotCapturer`）、フック（`CaptureHooks`）、ロガー、既定タイムアウトを差し替え可能です。
 - エンドポイント：`POST /api/screenshot`
 - リクエスト例：
 
@@ -171,6 +182,21 @@ Playwright フォームの下部にある「共有リンクをコピー」ボタ
 - **フォーム入力**：URL、selector、ユーザーエージェント、ビューポート、追加引数、カラー設定などを `localStorage` に保存。
 - **差分ビューア設定**：モード、フィルタ値、Pixelmatch 関連設定を `localStorage` に保存。
 - **履歴エントリ**：画像データとメタ情報は IndexedDB の単一オブジェクトストアで管理し、プレビュー表示時は `URL.createObjectURL` で Blob URL を生成します。
+
+---
+
+## 手動検証チェックリスト
+
+リリース前の目視確認に利用できます。
+
+1. `pnpm run dev` → `http://localhost:5173` を開き、フォームが初期化されているか確認（既存の `localStorage` があれば読込）。
+2. 既知の URL（例: https://example.com）で `body` セレクタのスクリーンショットを左右スロットに取得し、エラーが出ないことを確認。
+3. 片側をファイルアップロード（ドラッグ＆ドロップ／ファイル選択）に切り替えて差分ビューアを開き、モード切替・ズーム・パン操作が動作すること。
+4. 「履歴に保存」でエントリが追加され、プレビューのサムネイルが生成されること。履歴から左右スロットへ復元できること。
+5. 履歴モーダルで「履歴をすべて削除」を実行し、IndexedDB がクリアされること（リロード後にエントリが残らない）。
+6. 「共有リンクをコピー」を押し、コピーした URL を新規タブで開くとフォームが同じ値で復元され、その後クエリ `pw` が自動的に取り除かれること。
+7. フォームをクリアしブラウザを再訪すると、`localStorage` に保存された最新値が Rune のストア経由で反映されること。
+8. DevTools 等でネットワークを Offline にして Playwright の取得を試み、リクエストエラーが表示され履歴が汚染されないこと。
 
 ---
 

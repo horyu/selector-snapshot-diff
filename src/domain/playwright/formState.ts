@@ -1,5 +1,3 @@
-import { writable } from 'svelte/store';
-
 const APP_STATE_KEY = 'domdiffer.app.v1';
 
 export type StoredFormState = {
@@ -71,21 +69,45 @@ export function clearFormState(): void {
 }
 
 const createPlaywrightFormStore = () => {
-  const { subscribe, set, update } = writable<StoredFormState>(loadFormState());
+  type Subscriber = (value: StoredFormState) => void;
+  let state: StoredFormState = { ...loadFormState() };
   let suppressPersist = false;
+  const subscribers = new Set<Subscriber>();
 
-  subscribe((value) => {
-    if (suppressPersist) return;
-    saveFormState(value);
-  });
+  const notify = () => {
+    for (const subscriber of Array.from(subscribers)) {
+      subscriber(state);
+    }
+  };
+
+  const persist = () => {
+    if (!suppressPersist) {
+      saveFormState(state);
+    }
+  };
 
   return {
-    subscribe,
-    set,
-    update,
+    subscribe(run: Subscriber) {
+      subscribers.add(run);
+      run(state);
+      return () => {
+        subscribers.delete(run);
+      };
+    },
+    set(value: StoredFormState) {
+      state = { ...value };
+      persist();
+      notify();
+    },
+    update(updater: (value: StoredFormState) => StoredFormState) {
+      state = { ...updater(state) };
+      persist();
+      notify();
+    },
     reset() {
       suppressPersist = true;
-      set({ ...defaultFormState });
+      state = { ...defaultFormState };
+      notify();
       suppressPersist = false;
       clearFormState();
     },
