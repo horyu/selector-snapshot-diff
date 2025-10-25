@@ -23,12 +23,20 @@ const decodeBase64 = (encoded: string): string => {
   return decodeURIComponent(atob(encoded));
 };
 
+const coerceToString = (value: unknown): string | null => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return null;
+};
+
 const sanitizeState = (raw: Partial<StoredFormState>): StoredFormState => {
   const next: StoredFormState = { ...defaultFormState };
   STATE_KEYS.forEach((key) => {
-    const value = raw[key];
-    if (typeof value !== 'string') return;
-    const trimmed = value.trim();
+    const stringValue = coerceToString(raw[key]);
+    if (stringValue === null) return;
+    const trimmed = stringValue.trim();
     if (!trimmed) {
       next[key] = '';
       return;

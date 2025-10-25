@@ -55,13 +55,38 @@ const statesEqual = (a: StoredFormState, b: StoredFormState): boolean =>
   a.requestTimeout === b.requestTimeout &&
   a.colorScheme === b.colorScheme;
 
+const toStoredString = (value: unknown, fallback = ''): string => {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return value == null ? fallback : String(value);
+};
+
+const normalizeFormState = (
+  raw: Partial<StoredFormState> | null | undefined
+): StoredFormState => ({
+  url: toStoredString(raw?.url, defaultFormState.url),
+  selector: toStoredString(raw?.selector, defaultFormState.selector),
+  args: toStoredString(raw?.args, defaultFormState.args),
+  ua: toStoredString(raw?.ua, defaultFormState.ua),
+  vw: toStoredString(raw?.vw, defaultFormState.vw),
+  vh: toStoredString(raw?.vh, defaultFormState.vh),
+  waitFor: toStoredString(raw?.waitFor, defaultFormState.waitFor),
+  requestTimeout: toStoredString(
+    raw?.requestTimeout,
+    defaultFormState.requestTimeout
+  ),
+  colorScheme: toStoredString(raw?.colorScheme, defaultFormState.colorScheme),
+});
+
 export function createFormController(deps: FormControllerDeps): FormController {
   let lastPersistedState = cloneStoredState(defaultFormState);
 
   const formStatePersistence = createSnapshotPersistAction<StoredFormState>({
-    getSnapshot: deps.getCurrentFormState,
+    getSnapshot: () => normalizeFormState(deps.getCurrentFormState()),
     onPersist: (next) => {
-      lastPersistedState = cloneStoredState(next);
+      lastPersistedState = cloneStoredState(normalizeFormState(next));
       saveFormState(lastPersistedState);
     },
     compare: statesEqual,
@@ -73,7 +98,8 @@ export function createFormController(deps: FormControllerDeps): FormController {
     state: StoredFormState,
     options: { persist?: boolean } = {}
   ) => {
-    lastPersistedState = cloneStoredState(state);
+    const normalized = normalizeFormState(state);
+    lastPersistedState = cloneStoredState(normalized);
     formStatePersistence.setBaseline(lastPersistedState);
     if (options.persist) {
       saveFormState(lastPersistedState);
@@ -84,8 +110,9 @@ export function createFormController(deps: FormControllerDeps): FormController {
     state: StoredFormState,
     options?: { persist?: boolean }
   ) => {
-    deps.assignFormState(state);
-    setPersistBaseline(state, options);
+    const normalized = normalizeFormState(state);
+    deps.assignFormState(normalized);
+    setPersistBaseline(normalized, options);
   };
 
   const loadInitialState = () => {
@@ -111,7 +138,7 @@ export function createFormController(deps: FormControllerDeps): FormController {
   };
 
   const copyShareLink = async () => {
-    const state = deps.getCurrentFormState();
+    const state = normalizeFormState(deps.getCurrentFormState());
     try {
       const link = buildShareLink(state);
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
