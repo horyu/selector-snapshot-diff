@@ -53,12 +53,13 @@ pnpm run dev
 - **Lint / Format**：ESLint / `pnpm run format`
 - **履歴保存**：`src/domain/history/history.ts` で IndexedDB を利用
 - **Playwright API**：`createScreenshotCapturer` + `createScreenshotRequestHandler` による依存注入可能な構成。`plugins/playwrightApi.ts` が Vite dev サーバーに `/api/screenshot` エンドポイントを追加（開発時のみ）
+- **アプリケーションオーケストレーション層**：`src/domain/app/` 配下に `formController.ts` / `historyController.ts` / `screenshotController.ts` を配置し、`App.svelte` からフォーム・履歴・スクリーンショットの各ドメイン機能を委譲しています
 
 ---
 
 ## Rune モードのポイント
 
-- 画面状態は `$state` / `$derived` / `$effect` を中心に管理し、従来の Svelte store への依存はドメイン層のカスタム購読（例: `historyStore`) やフォームの `createSnapshotPersistAction` に置き換えています。
+- 画面状態は `$state` / `$derived` / `$effect` を中心に管理し、`App.svelte` は `createFormController`・`createHistoryController`・`createScreenshotController` を通じてドメインロジックへ責務委譲しています。従来の Svelte store への依存はドメイン層のカスタム購読（例: `historyStore`）やフォームの `createSnapshotPersistAction` に置き換えています。
 - フォーム永続化は `src/actions/persistSnapshot.ts` のアクションを通じて行い、`localStorage` との同期を Rune のリアクティブ文脈から分離しています。
 - 共有リンクや履歴復元などの副作用は `$effect.root` 内で AbortController／URL revoke を管理し、メモリリークを防止しています。
 - Playwright API 連携も `plugins/playwrightApi/types.ts` に型を集約し、`createScreenshotCapturer` + `createScreenshotRequestHandler` で依存（ブラウザランチャー／フック／ロガー）を注入できる構成に更新済みです。
@@ -179,7 +180,7 @@ Playwright フォームの下部にある「共有リンクをコピー」ボタ
 
 ## 設定の永続化
 
-- **フォーム入力**：URL、selector、ユーザーエージェント、ビューポート、追加引数、カラー設定などを `localStorage` に保存。
+- **フォーム入力**：URL、selector、ユーザーエージェント、ビューポート、追加引数、カラー設定などを `createFormController` 経由で `localStorage` に保存。
 - **差分ビューア設定**：モード、フィルタ値、Pixelmatch 関連設定を `localStorage` に保存。
 - **履歴エントリ**：画像データとメタ情報は IndexedDB の単一オブジェクトストアで管理し、プレビュー表示時は `URL.createObjectURL` で Blob URL を生成します。
 

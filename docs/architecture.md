@@ -6,9 +6,9 @@
 
 ### セクション分割の背景
 
-- `App.svelte` はフォーム・スロット・履歴・モーダルの調整役に徹し、実データ処理は `src/domain/**` 配下（diff / history / playwright / slots）へ切り出しています。Rune 化により各セクションは `$state` / `$derived` / `$effect` を利用し、従来のストア購読は廃止済みです。
-- Playwright 関連のフォーム値は `src/domain/playwright/config.ts` と `src/domain/playwright/formState.ts` で構造化し、UI から疑似 API 呼び出しまでを緩く結合。フォーム永続化は `createSnapshotPersistAction`（`src/actions/persistSnapshot.ts`）経由で行います。
-- IndexedDB 操作は `src/domain/history/historyDb.ts` ラッパー → `src/domain/history/history.ts` の二段構えで扱い、ストア購読は `src/domain/history/historyStore.ts` から提供しています。
+- `App.svelte` は UI のみを扱う調停役とし、実データ処理は `src/domain/**` 配下に分割しています。フォーム・履歴・スクリーンショットのドメインロジックは `src/domain/app/formController.ts` / `historyController.ts` / `screenshotController.ts` を通じて委譲され、Rune の `$state` / `$derived` / `$effect` は画面状態の反映に専念します。
+- Playwright 関連のフォーム値は `createFormController` が `src/domain/playwright/config.ts`・`src/domain/playwright/formState.ts` を束ねて扱い、`createSnapshotPersistAction`（`src/actions/persistSnapshot.ts`）で永続化します。UI 側はフォーム操作イベントのみ伝える構成です。
+- IndexedDB 操作は `src/domain/history/historyDb.ts` ラッパー → `src/domain/history/history.ts` の二段構えで扱い、`createHistoryController` が `historyStore` とプレビュー生成をまとめて管理します。
 - UI コンポーネントは `src/components/` に平坦配置しており、基礎 UI（`FormField.svelte`）も同階層で共有しています。
 - すべての Svelte コンポーネントには `<svelte:options runes />` を付与し、`svelte.config.js` の `compilerOptions.runes = true` とあわせて Rune モードをプロジェクト全体に適用しています（明示を残すのはチームの可読性のため）。
 
@@ -19,7 +19,7 @@
 - 履歴エントリは Blob 本体とメタ情報（サイズ・ラベル・取得時刻・ソース・Playwright フォームスナップショット）を IndexedDB の単一オブジェクトストアにまとめて保存しています。
 - プレビュー生成は `src/domain/history/historyPreviews.ts` で `URL.createObjectURL` を使い、コンポーネントの `$effect.root` 副作用で revoke を管理します。
 - `localStorage` 側はフォーム入力と差分ビューア設定を個別キーで管理（フォームは `domdiffer.app.v1` に JSON で集約）。タイムアウト値はフェッチ中断 (`AbortController`) 用で、API には送信しません。
-- Rune 化後も `persistForm` アクションは `$state` を経由して動作し、ストア値の変更トラッキングは `createSnapshotPersistAction` が担当します。
+- Rune 化後も `createFormController` 内で `persistForm` アクションを保持し、`$state` の変更は `createSnapshotPersistAction` を経由して `localStorage` に同期されます。
 
 ---
 
