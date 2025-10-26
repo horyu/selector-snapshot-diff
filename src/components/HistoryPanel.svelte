@@ -3,10 +3,17 @@
 <script lang="ts">
   import type {
     HistoryEntry,
-    SlotSource,
     PlaywrightFormState,
   } from '../domain/history/history';
   import { MAX_HISTORY_ENTRIES } from '../domain/history/history';
+  import {
+    describeHistorySource,
+    formatHistoryBytes,
+    formatHistoryTimestamp,
+    getPlaywrightHistorySelector,
+    isPlaywrightHistorySource,
+    summarizePlaywrightHistoryUrl,
+  } from '../domain/history/historyPresentation';
 
   let {
     entries = [] as HistoryEntry[],
@@ -39,72 +46,6 @@
       blobUrl?: string;
     }) => void;
   } = $props();
-
-  const historyDateFormatter = new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-
-  function formatTimestamp(ts: number) {
-    try {
-      return historyDateFormatter.format(new Date(ts));
-    } catch {
-      const d = new Date(ts);
-      return Number.isFinite(d.getTime()) ? d.toLocaleString() : '';
-    }
-  }
-
-  function formatBytes(bytes: number | undefined) {
-    if (!Number.isFinite(bytes) || !bytes || bytes <= 0) return '';
-    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${bytes} B`;
-  }
-
-  function describeSource(source: SlotSource) {
-    switch (source.kind) {
-      case 'upload':
-        return 'ファイルアップロード';
-      case 'paste':
-        return 'クリップボード';
-      case 'playwright':
-        return 'Playwright';
-      default:
-        return '';
-    }
-  }
-
-  function isPlaywrightSource(
-    source: SlotSource
-  ): source is Extract<SlotSource, { kind: 'playwright' }> {
-    return source.kind === 'playwright';
-  }
-
-  function summarizePlaywrightUrl(url: string) {
-    try {
-      const parsed = new URL(url);
-      const pathname = parsed.pathname || '/';
-      const search = parsed.search ?? '';
-      const hash = parsed.hash ?? '';
-      return `${parsed.host}${pathname}${search}${hash}`;
-    } catch {
-      return url.replace(/^[a-z]+:\/\//i, '');
-    }
-  }
-
-  function describeSourceForHeader(source: SlotSource) {
-    return describeSource(source);
-  }
-
-  function getPlaywrightSelector(
-    source: Extract<SlotSource, { kind: 'playwright' }>
-  ) {
-    return source.payload.selector ?? '';
-  }
 
   function isEntryBusy(id: string) {
     return busyIds.includes(id);
@@ -147,7 +88,7 @@
   {:else}
     <ul class="history-list">
       {#each entries as entry (entry.id)}
-        {@const sourceDescription = describeSourceForHeader(entry.image.source)}
+        {@const sourceDescription = describeHistorySource(entry.image.source)}
         <li class="history-item">
           <button
             class="history-preview"
@@ -176,18 +117,18 @@
                   class="history-created"
                   datetime={new Date(entry.createdAt).toISOString()}
                 >
-                  {formatTimestamp(entry.createdAt)}
+                  {formatHistoryTimestamp(entry.createdAt)}
                 </time>
                 {#if entry.image.size}
                   <span class="history-size"
-                    >{formatBytes(entry.image.size)}</span
+                    >{formatHistoryBytes(entry.image.size)}</span
                   >
                 {/if}
                 <div class="history-header-right">
                   {#if sourceDescription}
                     <span class="history-source">{sourceDescription}</span>
                   {/if}
-                  {#if isPlaywrightSource(entry.image.source)}
+                  {#if isPlaywrightHistorySource(entry.image.source)}
                     {@const pwSourceHeader = entry.image.source}
                     <button
                       class="link"
@@ -208,12 +149,12 @@
               </button>
             </header>
             <div class="history-label">
-              {#if isPlaywrightSource(entry.image.source)}
+              {#if isPlaywrightHistorySource(entry.image.source)}
                 {@const pwSource = entry.image.source}
-                {@const playUrlSummary = summarizePlaywrightUrl(
+                {@const playUrlSummary = summarizePlaywrightHistoryUrl(
                   pwSource.payload.url
                 )}
-                {@const playSelector = getPlaywrightSelector(pwSource)}
+                {@const playSelector = getPlaywrightHistorySelector(pwSource)}
                 <span class="history-label-content">
                   <a
                     class="history-label-link"

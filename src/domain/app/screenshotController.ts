@@ -1,4 +1,9 @@
-import { makeItem, revokeItem, type ImgSlot, type SlotItem } from '../slots/slots';
+import {
+  makeItem,
+  revokeItem,
+  type ImgSlot,
+  type SlotItem,
+} from '../slots/slots';
 import {
   createTimedAbortController,
   fetchScreenshotFile,
@@ -144,8 +149,11 @@ export function createScreenshotController(
         return;
       }
     }
-    const target: 'left' | 'right' =
-      !deps.getLeft() ? 'left' : !deps.getRight() ? 'right' : 'right';
+    const target: 'left' | 'right' = !deps.getLeft()
+      ? 'left'
+      : !deps.getRight()
+        ? 'right'
+        : 'right';
     setSlot(target, file, { source: { kind: origin } });
   };
 
