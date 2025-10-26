@@ -25,19 +25,18 @@ Vite の開発サーバに、要素スクリーンショットを返すエンド
 | `colorScheme` | `'light' \| 'dark' \| 'no-preference'` | メディア特性 `prefers-color-scheme` をエミュレート                                       |
 | `timeout`     | `number`                               | Playwright の操作タイムアウト（ミリ秒）。既定は 15,000ms（フォームからは送信されません） |
 
-### 実装構成と依存注入
+### 実装構成
 
-Rune 化に伴い、Playwright API プラグインは `plugins/playwrightApi/types.ts` で定義された型に従って依存を差し替えられるようになっています。
+Playwright API プラグインはシンプルな依存差し替えができるよう、主要な型を `plugins/playwrightApi/types.ts` にまとめています。
 
 | 役割               | 型                               | 説明                                                                                        |
 | ------------------ | -------------------------------- | ------------------------------------------------------------------------------------------- |
 | キャプチャ関数     | `ScreenshotCapturer`             | スクリーンショット取得ロジック（`createScreenshotCapturer` で生成）。テスト用に差し替え可能 |
-| Playwright 依存    | `CaptureDependencies`            | `BrowserLauncher`（`chromium.launch` 等）とベースフックをまとめた依存オブジェクト           |
-| フック             | `CaptureHooks`                   | `prepareBrowser` / `preparePage` / `beforeCapture` / `afterCapture` の各段階をカスタム      |
+| Playwright 依存    | `CaptureDependencies`            | `BrowserLauncher`（`chromium.launch` 等）を引き回すための依存オブジェクト                   |
 | リクエストハンドラ | `createScreenshotRequestHandler` | HTTP レイヤを担当。`timeoutMs` や `logger` もオプションで注入                               |
-| プラグイン設定     | `PlaywrightApiOptions`           | `routePath` / `capture` / `hooks` / `timeoutMs` / `logger` をまとめた Vite プラグインの設定 |
+| プラグイン設定     | `PlaywrightApiOptions`           | `routePath` / `capture` / `timeoutMs` / `logger` をまとめた Vite プラグインの設定パラメータ |
 
-`playwrightApi.ts` では上記オプションを受け取り、既定値として `chromium.launch` を利用したキャプチャ関数を使用します。必要に応じてテスト専用のモックやトレースログを差し替える際は、`PlaywrightApiOptions` 経由で注入してください。
+`playwrightApi.ts` では上記オプションを受け取り、既定値として `chromium.launch` を利用したキャプチャ関数を使用します。必要に応じてテスト専用のモックやトレースログを差し替える際は、`PlaywrightApiOptions` 経由で `capture` や `logger` を注入してください。
 
 ### 注意事項
 
@@ -50,14 +49,14 @@ Rune 化に伴い、Playwright API プラグインは `plugins/playwrightApi/typ
 
 ### カスタマイズ（Hooks）
 
-`CaptureHooks` は以下の 4 つのタイミングを差し替えられます。
+共通の前処理・後処理を追加したい場合は `plugins/playwrightApi/hooks.ts` に定義されている `globalCaptureHooks` を直接編集します。
 
 - `prepareBrowser(launchOptions, payload)`：`chromium.launch` に渡すオプションを変更したいときに利用します。
 - `preparePage(page, payload, timeout)`：ページ表示前後の任意処理（ログイン、追加ナビゲーションなど）を差し込めます。
 - `beforeCapture(page, payload, timeout)`：スクリーンショット直前に DOM を整える処理を追加できます。
 - `afterCapture(page, payload, buffer)`：生成された PNG バッファを加工・差し替えできます。`Buffer` を返すと置き換え、`void` なら元のバッファをそのまま返します。
 
-未指定のフックはデフォルト実装が適用されるため、必要な部分だけを上書きすれば済みます。
+外部からフックを差し込む仕組みは用意していないため、このファイルを修正してグローバルに適用するのが前提です。
 
 ### リクエスト例
 

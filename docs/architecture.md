@@ -37,5 +37,5 @@
 - `vite build` / `vite preview` モードでは API が無効になるため、クライアント側 (`import.meta.env.DEV` 判定) で警告を表示して処理を中断します。
 - 要求中にクライアントが離脱した場合でも Playwright のブラウザを確実にクローズするよう、`shouldAbort` フラグを共有しています。
 - リクエストボディは `parsePayload` で厳密に検証し、JSON 以外・型不一致は 400 を返却。タイムアウトは 15,000ms を既定とし、正の数値のみ受け付けます。
-- Rune 対応以降は `plugins/playwrightApi/types.ts` に型を集約し、`createScreenshotCapturer` + `createScreenshotRequestHandler` を介して依存注入できる構成に変更しました。
+- Rune 対応以降は `plugins/playwrightApi/types.ts` に型を集約し、`createScreenshotCapturer` + `createScreenshotRequestHandler` を介して Playwright 依存を差し替え可能にしています。共通の前処理・後処理は `plugins/playwrightApi/hooks.ts` の `globalCaptureHooks` を直接編集してカスタマイズします。
 - Playwright フォームの設定は「共有リンクをコピー」操作時に URL クエリ `pw`（Base64 エンコードされた JSON）として生成されます。リンクを開くとフォームへ展開したのち `pw` は URL から削除され、通常操作では URL を変更しません。

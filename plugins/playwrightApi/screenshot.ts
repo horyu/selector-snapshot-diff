@@ -8,13 +8,12 @@ import type {
 import type {
   AbortCheck,
   CaptureDependencies,
-  CaptureHooks,
   CaptureOptions,
   ScreenshotCapturer,
   ScreenshotPayload,
 } from './types';
 import { SelectorNotFoundError } from './errors';
-import { mergeHooks } from './hooks';
+import { globalCaptureHooks } from './hooks';
 
 export const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -39,14 +38,12 @@ const checkAbort = async (fn: AbortCheck): Promise<boolean> => {
 
 export function createScreenshotCapturer({
   browser,
-  hooks: baseHooks,
 }: CaptureDependencies): ScreenshotCapturer {
-  const preparedBaseHooks = mergeHooks(baseHooks);
+  const hooks = globalCaptureHooks;
 
   return async (
     payload: ScreenshotPayload,
-    options: CaptureOptions = {},
-    runtimeHooks?: CaptureHooks
+    options: CaptureOptions = {}
   ): Promise<Buffer | null> => {
     const shouldAbort = ensureAbortCheck(options.shouldAbort);
     const timeout =
@@ -54,8 +51,6 @@ export function createScreenshotCapturer({
       (typeof payload.timeout === 'number'
         ? payload.timeout
         : DEFAULT_TIMEOUT_MS);
-
-    const mergedHooks = mergeHooks(preparedBaseHooks, runtimeHooks);
 
     let launchedBrowser: Browser | null = null;
 
@@ -66,7 +61,7 @@ export function createScreenshotCapturer({
       if (payload.args?.length) {
         launchOptions.args = payload.args;
       }
-      await mergedHooks.prepareBrowser(launchOptions, payload);
+      await hooks.prepareBrowser(launchOptions, payload);
       if (await checkAbort(shouldAbort)) return null;
 
       launchedBrowser = await browser.launch(launchOptions);
@@ -80,10 +75,10 @@ export function createScreenshotCapturer({
       const context = await launchedBrowser.newContext(contextOptions);
       const page = await context.newPage();
 
-      await mergedHooks.preparePage(page, payload, timeout);
+      await hooks.preparePage(page, payload, timeout);
       if (await checkAbort(shouldAbort)) return null;
 
-      await mergedHooks.beforeCapture(page, payload, timeout);
+      await hooks.beforeCapture(page, payload, timeout);
       if (await checkAbort(shouldAbort)) return null;
 
       const selector = resolveSelector(payload);
@@ -100,7 +95,7 @@ export function createScreenshotCapturer({
       if (await checkAbort(shouldAbort)) return null;
 
       let buffer = await element.screenshot({ type: 'png' });
-      const modified = await mergedHooks.afterCapture(page, payload, buffer);
+      const modified = await hooks.afterCapture(page, payload, buffer);
       if (modified instanceof Buffer) {
         buffer = modified;
       }

@@ -1,7 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { CaptureHooks } from './types';
 
-export const defaultHooks: Required<CaptureHooks> = {
-  async prepareBrowser() {
+// Hooks をカスタマイズしたい場合はこの globalCaptureHooks を直接編集してください。
+// アプリ全体で共通の前処理・後処理を追加するための拡張ポイントです。
+export const globalCaptureHooks: Required<CaptureHooks> = {
+  async prepareBrowser(_launchOptions, _payload) {
     return;
   },
   async preparePage(page, payload, timeout) {
@@ -11,26 +14,10 @@ export const defaultHooks: Required<CaptureHooks> = {
       await page.waitForSelector(waitFor, { timeout });
     }
   },
-  async beforeCapture() {
+  async beforeCapture(_page, _payload, _timeout) {
     return;
   },
-  async afterCapture() {
-    return;
+  async afterCapture(_page, _payload, buffer) {
+    return buffer;
   },
 };
-
-export function mergeHooks(
-  ...hooksList: Array<CaptureHooks | undefined>
-): Required<CaptureHooks> {
-  let merged = defaultHooks;
-  for (const hooks of hooksList) {
-    if (!hooks) continue;
-    merged = {
-      prepareBrowser: hooks.prepareBrowser ?? merged.prepareBrowser,
-      preparePage: hooks.preparePage ?? merged.preparePage,
-      beforeCapture: hooks.beforeCapture ?? merged.beforeCapture,
-      afterCapture: hooks.afterCapture ?? merged.afterCapture,
-    };
-  }
-  return merged;
-}

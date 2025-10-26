@@ -3,12 +3,11 @@ import { readRequestBody } from './body';
 import { parsePayload } from './payload';
 import { normalizePlaywrightError, SelectorNotFoundError } from './errors';
 import { sendError } from './responses';
-import type { CaptureHooks, HandlerLogger, ScreenshotCapturer } from './types';
+import type { HandlerLogger, ScreenshotCapturer } from './types';
 
 export type CreateHandlerOptions = {
   capture: ScreenshotCapturer;
   defaultTimeoutMs: number;
-  hooks?: CaptureHooks;
   logger?: HandlerLogger;
 };
 
@@ -17,7 +16,6 @@ const noop = () => undefined;
 export function createScreenshotRequestHandler({
   capture,
   defaultTimeoutMs,
-  hooks,
   logger,
 }: CreateHandlerOptions) {
   const debug = logger?.debug ?? noop;
@@ -71,14 +69,10 @@ export function createScreenshotRequestHandler({
       const payload = parsed.value;
       debug('Received screenshot payload', { url: payload.url });
 
-      const buffer = await capture(
-        payload,
-        {
-          timeoutMs: payload.timeout ?? defaultTimeoutMs,
-          shouldAbort,
-        },
-        hooks
-      );
+      const buffer = await capture(payload, {
+        timeoutMs: payload.timeout ?? defaultTimeoutMs,
+        shouldAbort,
+      });
 
       if (buffer === null || clientClosed || res.writableEnded) {
         return;

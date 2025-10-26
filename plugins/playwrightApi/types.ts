@@ -63,13 +63,11 @@ export type CaptureHooks = {
 
 export type ScreenshotCapturer = (
   payload: ScreenshotPayload,
-  options?: CaptureOptions,
-  hooks?: CaptureHooks
+  options?: CaptureOptions
 ) => Promise<Buffer | null>;
 
 export type CaptureDependencies = {
   browser: BrowserLauncher;
-  hooks?: CaptureHooks;
 };
 
 export type HandlerLogger = {
@@ -80,7 +78,6 @@ export type HandlerLogger = {
 export type PlaywrightApiOptions = {
   routePath?: string;
   capture?: ScreenshotCapturer;
-  hooks?: CaptureHooks;
   timeoutMs?: number;
   logger?: HandlerLogger;
 };

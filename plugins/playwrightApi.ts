@@ -14,7 +14,6 @@ export default function playwrightApi(
   const {
     routePath = ROUTE_PATH,
     capture = captureElementScreenshot,
-    hooks,
     timeoutMs = DEFAULT_TIMEOUT_MS,
     logger,
   } = options;
@@ -26,7 +25,6 @@ export default function playwrightApi(
       const handler = createScreenshotRequestHandler({
         capture,
         defaultTimeoutMs: timeoutMs,
-        hooks,
         logger,
       });
       server.middlewares.use(routePath, handler);
