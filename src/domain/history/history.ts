@@ -3,18 +3,11 @@ import {
   requestToPromise,
   writeHistoryStore,
 } from './historyDb';
+import type { ScreenshotPayload as SchemaScreenshotPayload } from '../playwright/screenshotSchema';
 
 export const MAX_HISTORY_ENTRIES = 30;
 
-export type ScreenshotPayload = {
-  url: string;
-  selector: string;
-  args?: string[];
-  userAgent?: string;
-  viewport?: { width: number; height: number };
-  waitFor?: string;
-  colorScheme?: 'light' | 'dark' | 'no-preference';
-};
+export type ScreenshotPayload = SchemaScreenshotPayload;
 
 export type PlaywrightFormState = {
   url: string;

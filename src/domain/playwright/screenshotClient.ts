@@ -1,5 +1,5 @@
 import { parseErrorResponse } from '../../util/http';
-import type { ScreenshotPayload } from '../history/history';
+import type { ScreenshotPayload } from './screenshotSchema';
 
 export class ScreenshotRequestError extends Error {
   constructor(

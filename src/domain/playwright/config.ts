@@ -1,7 +1,5 @@
-import type {
-  PlaywrightFormState,
-  ScreenshotPayload,
-} from '../history/history';
+import type { PlaywrightFormState } from '../history/history';
+import type { ScreenshotPayload } from './screenshotSchema';
 
 export type PlaywrightInputs = {
   url: string;

@@ -1,19 +1,13 @@
 import type { Browser, BrowserType, LaunchOptions, Page } from 'playwright';
+import type {
+  ColorScheme as SchemaColorScheme,
+  ScreenshotPayload as SchemaScreenshotPayload,
+} from '../../src/domain/playwright/screenshotSchema';
+
+export type ColorScheme = SchemaColorScheme;
+export type ScreenshotPayload = SchemaScreenshotPayload;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
-
-export type ColorScheme = 'light' | 'dark' | 'no-preference';
-
-export interface ScreenshotPayload {
-  url: string;
-  selector: string;
-  timeout?: number;
-  args?: string[];
-  userAgent?: string;
-  viewport?: { width: number; height: number };
-  waitFor?: string;
-  colorScheme?: ColorScheme;
-}
 
 export type ErrorCode =
   | 'method_not_allowed'

@@ -52,7 +52,7 @@ pnpm run dev
 - **スタイリング**：プレーン CSS
 - **Lint / Format**：ESLint / `pnpm run format`
 - **履歴保存**：`src/domain/history/history.ts` で IndexedDB を利用
-- **Playwright API**：`createScreenshotCapturer` + `createScreenshotRequestHandler` による依存注入可能な構成。`plugins/playwrightApi.ts` が Vite dev サーバーに `/api/screenshot` エンドポイントを追加（開発時のみ）
+- **Playwright API**：`createScreenshotCapturer` + `createScreenshotRequestHandler` による依存注入可能な構成。`plugins/playwrightApi.ts` が Vite dev サーバーに `/api/screenshot` エンドポイントを追加（開発時のみ）。リクエストバリデーションは `src/domain/playwright/screenshotSchema.ts` の zod スキーマをクライアントとサーバーで共有しています。
 - **アプリケーションオーケストレーション層**：`src/domain/app/` 配下に `formController.ts` / `historyController.ts` / `screenshotController.ts` を配置し、`App.svelte` からフォーム・履歴・スクリーンショットの各ドメイン機能を委譲しています
 
 ---

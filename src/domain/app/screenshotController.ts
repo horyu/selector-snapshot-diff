@@ -14,6 +14,7 @@ import {
   buildScreenshotPayload,
   createFormSnapshot,
 } from '../playwright/config';
+import { parseScreenshotPayload } from '../playwright/screenshotSchema';
 import {
   defaultFormState,
   type StoredFormState,
@@ -221,20 +222,34 @@ export function createScreenshotController(
     else deps.setFetchingRight(true);
 
     try {
-      const payload = buildScreenshotPayload({
+      const rawPayload = buildScreenshotPayload({
         ...formInputs,
         url: normalizedUrl,
         selector,
       });
+      const validation = parseScreenshotPayload(rawPayload);
+      if (!validation.ok) {
+        const message =
+          validation.message === 'Missing url'
+            ? 'Please enter a URL'
+            : validation.message;
+        deps.setErrorMessage(message);
+        deps.setLastError(null);
+        return;
+      }
+      const validatedPayload = validation.value;
       const formSnapshot = createFormSnapshot(formInputs);
 
-      const file = await fetchScreenshotFile(payload, controller.signal);
+      const file = await fetchScreenshotFile(
+        validatedPayload,
+        controller.signal
+      );
       const slotLabel = deps.createSlotLabel(normalizedUrl, selector);
       setSlot(slot, file, {
         labelOverride: slotLabel,
         source: {
           kind: 'playwright',
-          payload,
+          payload: validatedPayload,
           form: formSnapshot,
         },
       });
