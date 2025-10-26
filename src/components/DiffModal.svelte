@@ -40,6 +40,7 @@
   let mode = $state<Mode>('overlay');
   let reveal = $state(50); // 0-100, swipe 用
   let alpha = $state(0.5); // 0-1, onion 用
+  let fullscreen = $state(false);
   // ズーム/パン
   let zoom = $state(1); // 0.25 - 6
   let panX = $state(0);
@@ -75,6 +76,7 @@
         if (typeof s.alpha === 'number') alpha = clamp(s.alpha, 0, 1);
         if (typeof s.pmIncludeAA === 'boolean') pmIncludeAA = s.pmIncludeAA;
         if (typeof s.pmAlpha === 'number') pmAlpha = clamp(s.pmAlpha, 0, 1);
+        if (typeof s.fullscreen === 'boolean') fullscreen = s.fullscreen;
       }
     } catch {}
   }
@@ -87,6 +89,7 @@
     alpha: number;
     pmIncludeAA: boolean;
     pmAlpha: number;
+    fullscreen: boolean;
   };
   function saveViewState(state: ViewerPersistState) {
     try {
@@ -94,6 +97,9 @@
     } catch {}
   }
 
+  if (typeof window !== 'undefined') {
+    loadViewState();
+  }
   // Persist when controls change
   $effect(() => {
     saveViewState({
@@ -105,6 +111,7 @@
       alpha,
       pmIncludeAA,
       pmAlpha,
+      fullscreen,
     });
   });
 
@@ -126,6 +133,10 @@
   let startY = $state(0);
   let startDX = $state(0);
   let startDY = $state(0);
+
+  function toggleFullscreen() {
+    fullscreen = !fullscreen;
+  }
 
   function updateWrapSize() {
     // 基準: 2枚の自然サイズ。オフセットで正側に広がる分は考慮。
@@ -189,7 +200,6 @@
   onMount(() => {
     // フォーカスをモーダルに
     wrapEl?.focus();
-    loadViewState();
 
     if (typeof document !== 'undefined') {
       const previousOverflow = document.body.style.overflow;
@@ -293,6 +303,7 @@
 <div class="modal-backdrop">
   <div
     class="modal"
+    class:fullscreen
     role="dialog"
     aria-modal="true"
     aria-label="差分ビューア"
@@ -302,9 +313,25 @@
   >
     <header class="modal-header">
       <h2>差分ビューア</h2>
-      <button class="icon" onclick={() => onClose?.()} aria-label="閉じる"
-        >✕</button
-      >
+      <div class="header-actions">
+        <button
+          type="button"
+          class="icon"
+          onclick={toggleFullscreen}
+          aria-label={fullscreen ? '通常表示に戻す' : '全画面表示に切り替える'}
+          title={fullscreen ? '通常表示に戻す' : '全画面表示'}
+        >
+          ⛶
+        </button>
+        <button
+          type="button"
+          class="icon"
+          onclick={() => onClose?.()}
+          aria-label="閉じる"
+        >
+          ✕
+        </button>
+      </div>
     </header>
     <section class="modal-body">
       <div
@@ -567,12 +594,24 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
   }
+  .modal.fullscreen {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
   .modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--diff-border, #ececec);
+  }
+  .modal-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   .modal-header h2 {
     font-size: 1.1rem;
@@ -592,11 +631,14 @@
     background: var(--diff-surface-alt, #f4f5f6);
     min-height: 0;
   }
+  .modal.fullscreen .modal-body {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    height: 100%;
+  }
 
   .viewer {
     overflow: auto;
     border: 1px solid var(--diff-border, #e8e8e8);
-    border-radius: 8px;
     background: #000;
     display: grid;
     place-items: start;
@@ -606,6 +648,10 @@
     user-select: none;
     min-height: 0;
     max-height: 100%;
+  }
+  .modal.fullscreen .viewer {
+    max-height: none;
+    height: 100%;
   }
   .viewer.grabbing {
     cursor: grabbing;
@@ -666,7 +712,6 @@
   .img-wrap {
     background: #111;
     border: 1px solid #222;
-    border-radius: 6px;
     padding: 0.5rem;
     overflow: auto;
   }
@@ -687,6 +732,9 @@
     min-height: 0;
     max-height: 100%;
     overflow-y: auto;
+  }
+  .modal.fullscreen .controls {
+    max-height: none;
   }
   .modes {
     display: flex;

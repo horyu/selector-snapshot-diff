@@ -28,6 +28,7 @@
 - Pixelmatch は `diffMask` オプションを使い、マスク画像生成とトリプティック出力の双方に流用しています。
 - 表示モードごとに CSS ブレンドを切り替え（`mix-blend-mode: difference` など）つつ、スワイプは `clip-path` とハンドルで制御。
 - ズーム・パンは CSS transform で行い、内部状態は `$state` で管理しつつ `localStorage` に反映してモーダル再訪時に復元。
+- 差分ビューアはヘッダー右上の ⛶ ボタンで全画面表示をトグルでき、設定は `localStorage`（`domdiffer.viewer.v1`）に永続化されます。全画面時はステージ領域がブラウザ全体を占有するよう CSS を切り替え、通常表示時より広い操作領域を確保します。
 
 ---
 
