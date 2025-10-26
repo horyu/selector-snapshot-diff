@@ -34,15 +34,7 @@
   let left = $state<ImgSlot | null>(null);
   let right = $state<ImgSlot | null>(null);
 
-  let urlInput = $state(defaultFormState.url);
-  let selectorInput = $state(defaultFormState.selector);
-  let argsInput = $state(defaultFormState.args);
-  let uaInput = $state(defaultFormState.ua);
-  let vwInput = $state(defaultFormState.vw);
-  let vhInput = $state(defaultFormState.vh);
-  let waitForInput = $state(defaultFormState.waitFor);
-  let requestTimeoutInput = $state(defaultFormState.requestTimeout);
-  let colorSchemeInput = $state(defaultFormState.colorScheme);
+  let formState = $state<StoredFormState>({ ...defaultFormState });
 
   let urlInputEl = $state<HTMLInputElement | null>(null);
   let selectorInputEl = $state<HTMLInputElement | null>(null);
@@ -64,28 +56,10 @@
   const ready = $derived(!!left && !!right);
 
   const assignFormState = (state: StoredFormState) => {
-    urlInput = state.url;
-    selectorInput = state.selector;
-    argsInput = state.args;
-    uaInput = state.ua;
-    vwInput = state.vw;
-    vhInput = state.vh;
-    waitForInput = state.waitFor;
-    requestTimeoutInput = state.requestTimeout;
-    colorSchemeInput = state.colorScheme;
+    formState = { ...state };
   };
 
-  const currentFormState = (): StoredFormState => ({
-    url: urlInput,
-    selector: selectorInput,
-    args: argsInput,
-    ua: uaInput,
-    vw: vwInput,
-    vh: vhInput,
-    waitFor: waitForInput,
-    requestTimeout: requestTimeoutInput,
-    colorScheme: colorSchemeInput,
-  });
+  const currentFormState = (): StoredFormState => ({ ...formState });
 
   const formController = createFormController({
     assignFormState,
@@ -184,7 +158,7 @@
     setLastError: (value) => {
       lastError = value;
     },
-    getRequestTimeout: () => requestTimeoutInput,
+    getRequestTimeout: () => formState.requestTimeout,
     setFetchingLeft: (value) => {
       fetchingLeft = value;
     },
@@ -287,15 +261,15 @@
     <PlaywrightForm
       bind:urlInputRef={urlInputEl}
       bind:selectorInputRef={selectorInputEl}
-      bind:url={urlInput}
-      bind:selector={selectorInput}
-      bind:ua={uaInput}
-      bind:viewportWidth={vwInput}
-      bind:viewportHeight={vhInput}
-      bind:waitFor={waitForInput}
-      bind:requestTimeout={requestTimeoutInput}
-      bind:colorScheme={colorSchemeInput}
-      bind:args={argsInput}
+      bind:url={formState.url}
+      bind:selector={formState.selector}
+      bind:ua={formState.ua}
+      bind:viewportWidth={formState.vw}
+      bind:viewportHeight={formState.vh}
+      bind:waitFor={formState.waitFor}
+      bind:requestTimeout={formState.requestTimeout}
+      bind:colorScheme={formState.colorScheme}
+      bind:args={formState.args}
       {fetchingLeft}
       {fetchingRight}
       onFetch={({ slot }) => fetchScreenshot(slot)}
