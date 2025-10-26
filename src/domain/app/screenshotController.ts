@@ -1,11 +1,4 @@
-import {
-  acceptTypes,
-  makeItem,
-  maxBytes,
-  revokeItem,
-  type ImgSlot,
-  type SlotItem,
-} from '../slots/slots';
+import { makeItem, revokeItem, type ImgSlot, type SlotItem } from '../slots/slots';
 import {
   createTimedAbortController,
   fetchScreenshotFile,
@@ -21,6 +14,11 @@ import {
   type StoredFormState,
 } from '../playwright/formState';
 import type { SlotSource } from '../history/history';
+import {
+  validateImageFile,
+  formatImageValidationError,
+  ACCEPTED_IMAGE_MESSAGE,
+} from '../slots/validation';
 
 export type ApiError = { status: number; message: string; stack?: string };
 
@@ -68,22 +66,17 @@ export type ScreenshotController = {
   destroy: () => void;
 };
 
-const validateFile = (file: File): string | null => {
-  if (!acceptTypes.has(file.type)) {
-    return `未対応の形式: ${file.type}`;
-  }
-  if (file.size > maxBytes) {
-    return `ファイルサイズ超過（上限 ${(maxBytes / (1024 * 1024)).toFixed(0)}MB）`;
-  }
-  return null;
-};
-
 export function createScreenshotController(
   deps: ScreenshotControllerDeps
 ): ScreenshotController {
   const abortControllers: Record<'left' | 'right', AbortController | null> = {
     left: null,
     right: null,
+  };
+
+  const reportValidationError = (message: string) => {
+    deps.setErrorMessage(message);
+    deps.setLastError(null);
   };
 
   const setSlot = (
@@ -139,43 +132,61 @@ export function createScreenshotController(
     deps.setRight(currentLeft);
   };
 
-  const addFile = (file: File, origin: FileOrigin) => {
-    const error = validateFile(file);
-    if (error) {
-      deps.setErrorMessage(error);
-      deps.setLastError(null);
-      return;
+  const addFile = (
+    file: File,
+    origin: FileOrigin,
+    options: { skipValidation?: boolean } = {}
+  ) => {
+    if (!options.skipValidation) {
+      const validation = validateImageFile(file);
+      if (!validation.ok) {
+        reportValidationError(formatImageValidationError(validation.error));
+        return;
+      }
     }
-    const target: 'left' | 'right' = !deps.getLeft()
-      ? 'left'
-      : !deps.getRight()
-        ? 'right'
-        : 'right';
+    const target: 'left' | 'right' =
+      !deps.getLeft() ? 'left' : !deps.getRight() ? 'right' : 'right';
     setSlot(target, file, { source: { kind: origin } });
   };
 
   const addFiles = (files: FileList | File[], origin: FileOrigin) => {
-    const arr = Array.from(files).filter((f) => acceptTypes.has(f.type));
+    const arr = Array.from(files);
     if (arr.length === 0) {
-      deps.setErrorMessage('画像ファイル（png/jpeg/webp）を指定してください');
-      deps.setLastError(null);
+      reportValidationError(ACCEPTED_IMAGE_MESSAGE);
       return;
     }
-    for (const file of arr.slice(0, 2)) {
-      addFile(file, origin);
+    let added = 0;
+    let validFound = false;
+    for (const file of arr) {
+      const validation = validateImageFile(file);
+      if (!validation.ok) {
+        reportValidationError(formatImageValidationError(validation.error));
+        continue;
+      }
+      validFound = true;
+      addFile(file, origin, { skipValidation: true });
+      added += 1;
+      if (added >= 2) break;
+    }
+    if (!validFound) {
+      reportValidationError(ACCEPTED_IMAGE_MESSAGE);
     }
   };
 
   const handleChosenFiles = (slot: 'left' | 'right', files: File[]) => {
+    let validFound = false;
     for (const file of files) {
-      const error = validateFile(file);
-      if (error) {
-        deps.setErrorMessage(error);
-        deps.setLastError(null);
+      const validation = validateImageFile(file);
+      if (!validation.ok) {
+        reportValidationError(formatImageValidationError(validation.error));
         continue;
       }
+      validFound = true;
       setSlot(slot, file, { source: { kind: 'upload' } });
       return;
+    }
+    if (!validFound && files.length > 0) {
+      reportValidationError(ACCEPTED_IMAGE_MESSAGE);
     }
   };
 
