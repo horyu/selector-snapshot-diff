@@ -1,4 +1,4 @@
-# Selector Snapshot Diff
+﻿# Selector Snapshot Diff
 
 Selector Snapshot Diff は Playwright を使って任意の URL と selector のスクリーンショットを取得し、左右の画像を比較して差分を強調表示できるローカル Web アプリケーションです。取得した画像や Playwright のフォーム設定はブラウザ内に保存され、過去の状態を呼び出して素早く再比較できます。
 
@@ -31,6 +31,9 @@ Selector Snapshot Diff は Playwright を使って任意の URL と selector の
 ### 手順
 
 ```bash
+# mise でツールを有効化
+mise install
+
 # 依存関係のインストール
 pnpm install
 
