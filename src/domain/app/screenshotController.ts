@@ -183,18 +183,16 @@ export function createScreenshotController(
   };
 
   const handleChosenFiles = (slot: 'left' | 'right', files: File[]) => {
-    let validFound = false;
     for (const file of files) {
       const validation = validateImageFile(file);
       if (!validation.ok) {
         reportValidationError(formatImageValidationError(validation.error));
         continue;
       }
-      validFound = true;
       setSlot(slot, file, { source: { kind: 'upload' } });
       return;
     }
-    if (!validFound && files.length > 0) {
+    if (files.length > 0) {
       reportValidationError(ACCEPTED_IMAGE_MESSAGE);
     }
   };
