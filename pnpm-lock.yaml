@@ -66,9 +66,6 @@ importers:
       vite:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@25.9.5)(esbuild@0.28.1)(yaml@2.9.0)
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
 
 packages:
 
@@ -2150,7 +2147,8 @@ snapshots:
 
   yaml@1.10.3: {}
 
-  yaml@2.9.0: {}
+  yaml@2.9.0:
+    optional: true
 
   yocto-queue@0.1.0: {}
 
