@@ -221,5 +221,4 @@ Pull Request／コミット前には少なくとも `check` と `lint` の実行
 
 ```txt
 Copyright (C) 2025 horyu
-Portions generated with the assistance of OpenAI Codex (gpt-5-codex).
 ```
