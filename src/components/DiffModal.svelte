@@ -338,6 +338,8 @@
         class="viewer {draggingMode === 'pan'
           ? 'grabbing'
           : ''} {draggingMode === 'offset' ? 'moving' : ''}"
+        role="application"
+        aria-label="差分ビューア"
         bind:this={viewerEl}
         onwheel={onWheel}
         onpointerdown={onPointerDown}
