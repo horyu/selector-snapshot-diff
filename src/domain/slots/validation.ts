@@ -5,8 +5,7 @@ export type ImageValidationError =
   | { code: 'size_exceeded'; limitBytes: number };
 
 export type ImageValidationResult =
-  | { ok: true }
-  | { ok: false; error: ImageValidationError };
+  { ok: true } | { ok: false; error: ImageValidationError };
 
 const ACCEPTED_TYPE_MESSAGE = '画像ファイル（png/jpeg/webp）を指定してください';
 

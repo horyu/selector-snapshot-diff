@@ -187,8 +187,7 @@ export const screenshotPayloadSchema = baseSchema.transform((value) => {
 export type ScreenshotPayload = z.infer<typeof screenshotPayloadSchema>;
 
 export type ScreenshotPayloadParseResult =
-  | { ok: true; value: ScreenshotPayload }
-  | { ok: false; message: string };
+  { ok: true; value: ScreenshotPayload } | { ok: false; message: string };
 
 export const invalidPayloadMessage = 'Invalid payload';
 
