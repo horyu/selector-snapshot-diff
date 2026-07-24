@@ -23,13 +23,6 @@ Selector Snapshot Diff は Playwright を使って任意の URL と selector の
 
 ## Quick Start
 
-### 前提
-
-- [Node.js](https://nodejs.org/) 18 以上
-- [pnpm](https://pnpm.io/) 9 系推奨
-
-### 手順
-
 ```bash
 # mise でツールを有効化
 mise install
@@ -50,7 +43,7 @@ pnpm run dev
 
 ## システム構成
 
-- **クライアント**：Vite 7 + Svelte 5（Runes 有効、TypeScript / strict モード）
+- **クライアント**：Vite 8 + Svelte 5（Runes 有効、TypeScript / strict モード）
 - **Svelte 設定**：全コンポーネントに `<svelte:options runes />` を明示しつつ、`svelte.config.js` の `compilerOptions.runes = true` で Rune モードをプロジェクト全体に適用
 - **スタイリング**：プレーン CSS
 - **Lint / Format**：ESLint / `pnpm run format`
@@ -124,7 +117,6 @@ pnpm run lint       # ESLint による lint
 pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 ```
 
-- Node.js 18 以上を推奨。
 - Playwright は `pnpm run dev` 実行時にローカルで起動できる環境が必要です。
 - 本プロジェクトは Vite の開発モード専用です。`pnpm run build` 結果や `vite preview` 相当の実行環境では Playwright 連携が無効になります。
 
