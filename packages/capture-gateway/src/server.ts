@@ -1,5 +1,5 @@
 import { fork } from 'node:child_process';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, extname, join, relative, resolve } from 'node:path';
@@ -137,16 +137,18 @@ const runCapture = (
   });
 
 const serveStatic = (req: IncomingMessage, res: ServerResponse): void => {
-  const requestPath = req.url === '/' ? '/index.html' : req.url?.split('?')[0];
+  const pathname = req.url?.split('?')[0] ?? '/';
+  const requestPath = pathname === '/' ? '/index.html' : pathname;
   const target = resolve(distPath, `.${requestPath}`);
   const relativeTarget = relative(distPath, target);
   const safeTarget =
     !relativeTarget.startsWith('..') && !relativeTarget.includes(':')
       ? target
       : join(distPath, 'index.html');
-  const file = existsSync(safeTarget)
-    ? safeTarget
-    : join(distPath, 'index.html');
+  const file =
+    existsSync(safeTarget) && statSync(safeTarget).isFile()
+      ? safeTarget
+      : join(distPath, 'index.html');
   if (!existsSync(file)) {
     sendJson(res, 404, {
       error: 'Build output not found. Run pnpm build first.',
