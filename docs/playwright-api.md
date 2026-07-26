@@ -1,6 +1,6 @@
 ## Playwright API（開発用）
 
-Vite の開発サーバに、要素スクリーンショットを返すエンドポイントを実装しています（Vite プラグイン）。本リファレンスは Rune 対応後の依存注入構成を前提にしています。
+Vite から独立した Capture Gateway に、要素スクリーンショットを返すエンドポイントを実装しています。Gateway はリクエストごとに Worker を起動し、Worker が Playwright を実行します。
 
 - エンドポイント: `POST /api/screenshot`
 - レスポンス: `image/png`（最初に一致した要素のスクリーンショット）
@@ -27,38 +27,36 @@ Vite の開発サーバに、要素スクリーンショットを返すエンド
 
 ### 実装構成
 
-Playwright API プラグインはシンプルな依存差し替えができるよう、主要な型を `plugins/playwrightApi/types.ts` にまとめています。
+Capture 機能は UI、HTTP Gateway、Worker、キャプチャフローを分離しています。
 
-| 役割               | 型                               | 説明                                                                                        |
-| ------------------ | -------------------------------- | ------------------------------------------------------------------------------------------- |
-| キャプチャ関数     | `ScreenshotCapturer`             | スクリーンショット取得ロジック（`createScreenshotCapturer` で生成）。テスト用に差し替え可能 |
-| Playwright 依存    | `CaptureDependencies`            | `BrowserLauncher`（`chromium.launch` 等）を引き回すための依存オブジェクト                   |
-| リクエストハンドラ | `createScreenshotRequestHandler` | HTTP レイヤを担当。`timeoutMs` や `logger` もオプションで注入                               |
-| プラグイン設定     | `PlaywrightApiOptions`           | `routePath` / `capture` / `timeoutMs` / `logger` をまとめた Vite プラグインの設定パラメータ |
+| 役割               | 型                | 説明                                                            |
+| ------------------ | ----------------- | --------------------------------------------------------------- |
+| キャプチャ関数     | `createCapturer`  | `capture-core` の Playwright 非依存なキャプチャフロー           |
+| Playwright 依存    | `chromium`        | Worker だけが `playwright` を読み込み、要求ごとにブラウザを起動 |
+| リクエストハンドラ | `capture-gateway` | HTTP 入力検証、Worker 起動、キャンセル伝播を担当                |
+| Gateway            | `capture-gateway` | HTTP 入力検証、Worker 起動、静的 UI 配信を担当                  |
 
-`playwrightApi.ts` では上記オプションを受け取り、既定値として `chromium.launch` を利用したキャプチャ関数を使用します。必要に応じてテスト専用のモックやトレースログを差し替える際は、`PlaywrightApiOptions` 経由で `capture` や `logger` を注入してください。
-
-リクエストのバリデーションは `src/domain/playwright/screenshotSchema.ts` に定義した zod スキーマをクライアントとサーバーで共有しており、同じ制約・エラーメッセージを再利用できるようになっています。
+リクエストのバリデーションは `packages/protocol/` の zod スキーマをクライアントと Gateway で共有しています。キャプチャ時のカスタマイズは、`capture-core` の生成時に `CaptureProfile` を注入して行います。
 
 ### 注意事項
 
 - タイムアウト（`timeout`）が未指定の場合は 15,000ms を使用します。正の数値を指定すると上書きできます（UI フォームからは送信されないため、API を直接呼ぶ場合のみ利用できます）。
-- 依存関係はレポジトリに含まれているため、`pnpm install` を実行してから `pnpm exec playwright install chromium` でブラウザを取得してください。
+- 依存関係はレポジトリに含まれているため、`pnpm install` を実行してから `pnpm run playwright:install` でブラウザを取得してください。
 - `waitFor` が空の場合でも、キャプチャ処理は `selector`（未指定時は `body`）を `page.waitForSelector` してから撮影します。
 - 起動オプションはネットワーク／セキュリティ動作に影響するため、ローカル開発環境での利用に限定してください。
 - フォーム下部の「共有リンクをコピー」から URL クエリ `pw` に Base64 でシリアライズしたリンクを生成できます。リンクを開くと設定が復元され、その後 `pw` は自動的に削除されます（機微情報は入力しないでください）。
-- ランタイムでエンドポイントが読み込まれるのは `pnpm run dev` 実行時だけです。ビルド成果物（`pnpm run build`／`pnpm run preview`）では有効化されません。クライアント側では `import.meta.env.DEV` で無効化ガードを行っています。
+- `pnpm run start` は Gateway が `dist/` と API を同一オリジンで配信します。開発時は Vite が Gateway へ `/api` を proxy します。
 
 ### カスタマイズ（Hooks）
 
-共通の前処理・後処理を追加したい場合は `plugins/playwrightApi/hooks.ts` に定義されている `globalCaptureHooks` を直接編集します。
+共通の前処理・後処理を追加したい場合は、`capture-core` の `createCapturer` に `CaptureProfile` を注入します。
 
 - `prepareBrowser(launchOptions, payload)`：`chromium.launch` に渡すオプションを変更したいときに利用します。
 - `preparePage(page, payload, timeout)`：ページ表示前後の任意処理（ログイン、追加ナビゲーションなど）を差し込めます。
 - `beforeCapture(page, payload, timeout)`：スクリーンショット直前に DOM を整える処理を追加できます。
 - `afterCapture(page, payload, buffer)`：生成された PNG バッファを加工・差し替えできます。`Buffer` を返すと置き換え、`void` なら元のバッファをそのまま返します。
 
-外部からフックを差し込む仕組みは用意していないため、このファイルを修正してグローバルに適用するのが前提です。
+グローバルな可変フックは使用しません。プロファイルは Worker 作成時に固定されるため、テストや将来の複数プロファイルに対応できます。
 
 ### リクエスト例
 
@@ -85,7 +83,7 @@ curl -X POST http://localhost:5173/api/screenshot \
 
 ### 実装ファイル
 
-- `plugins/playwrightApi.ts`
-- `plugins/playwrightApi/handler.ts`
-- `plugins/playwrightApi/` 配下のユーティリティ（`payload.ts`, `responses.ts`, `errors.ts`, `screenshot.ts`, `body.ts`, `types.ts`）
-- `vite.config.ts` にプラグインを登録済み
+- `packages/capture-gateway/src/server.mjs`
+- `packages/capture-worker/src/worker.mjs`
+- `packages/capture-core/src/capture.mjs`
+- `packages/protocol/src/screenshot.js`

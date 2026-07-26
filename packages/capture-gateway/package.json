@@ -1,0 +1,13 @@
+{
+  "name": "@selector-snapshot-diff/capture-gateway",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs",
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {
+    "@selector-snapshot-diff/protocol": "workspace:*"
+  }
+}

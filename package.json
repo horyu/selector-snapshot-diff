@@ -5,8 +5,12 @@
   "description": "Local web app to compare two images and highlight diffs.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite",
+    "dev:capture": "pnpm --filter @selector-snapshot-diff/capture-gateway dev",
     "build": "vite build",
+    "start": "pnpm --filter @selector-snapshot-diff/capture-gateway start",
+    "playwright:install": "pnpm --filter @selector-snapshot-diff/capture-worker exec playwright install chromium",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint . --ext .svelte,.ts,.js",
     "format": "prettier -w ."
@@ -22,7 +26,6 @@
     "eslint": "10.7.0",
     "eslint-plugin-svelte": "3.22.0",
     "globals": "17.7.0",
-    "playwright": "1.61.1",
     "prettier": "3.9.6",
     "prettier-plugin-svelte": "4.1.1",
     "svelte": "5.56.7",
@@ -31,7 +34,7 @@
     "vite": "8.1.5"
   },
   "dependencies": {
-    "pixelmatch": "7.2.0",
-    "zod": "4.4.3"
+    "@selector-snapshot-diff/protocol": "workspace:*",
+    "pixelmatch": "7.2.0"
   }
 }

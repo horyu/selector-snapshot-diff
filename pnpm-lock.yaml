@@ -4,16 +4,19 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  brace-expansion: 5.0.8
+
 importers:
 
   .:
     dependencies:
+      '@selector-snapshot-diff/protocol':
+        specifier: workspace:*
+        version: link:packages/protocol
       pixelmatch:
         specifier: 7.2.0
         version: 7.2.0
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
     devDependencies:
       '@eslint/js':
         specifier: 10.0.1
@@ -45,9 +48,6 @@ importers:
       globals:
         specifier: 17.7.0
         version: 17.7.0
-      playwright:
-        specifier: 1.61.1
-        version: 1.61.1
       prettier:
         specifier: 3.9.6
         version: 3.9.6
@@ -66,6 +66,29 @@ importers:
       vite:
         specifier: 8.1.5
         version: 8.1.5(@types/node@24.13.3)
+
+  packages/capture-core: {}
+
+  packages/capture-gateway:
+    dependencies:
+      '@selector-snapshot-diff/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
+  packages/capture-worker:
+    dependencies:
+      '@selector-snapshot-diff/capture-core':
+        specifier: workspace:*
+        version: link:../capture-core
+      playwright:
+        specifier: 1.61.1
+        version: 1.61.1
+
+  packages/protocol:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
 
 packages:
 
@@ -384,9 +407,9 @@ packages:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
-  brace-expansion@5.0.7:
-    resolution: {integrity: sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==}
-    engines: {node: 18 || 20 || >=22}
+  brace-expansion@5.0.8:
+    resolution: {integrity: sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg==}
+    engines: {node: 20 || >=22}
 
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
@@ -1274,7 +1297,7 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  brace-expansion@5.0.7:
+  brace-expansion@5.0.8:
     dependencies:
       balanced-match: 4.0.4
 
@@ -1552,7 +1575,7 @@ snapshots:
 
   minimatch@10.2.5:
     dependencies:
-      brace-expansion: 5.0.7
+      brace-expansion: 5.0.8
 
   mri@1.2.0: {}
 

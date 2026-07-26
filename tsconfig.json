@@ -11,10 +11,5 @@
     "types": ["svelte", "node", "vite/client"],
     "noImplicitAny": true
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.svelte",
-    "vite.config.ts",
-    "plugins/**/*.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.svelte", "vite.config.ts"]
 }

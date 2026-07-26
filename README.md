@@ -31,9 +31,9 @@ mise install
 pnpm install
 
 # （初回 Playwright 利用前に必要に応じてブラウザを取得）
-pnpm exec playwright install
+pnpm run playwright:install
 
-# 開発サーバーを起動（Vite + Playwright API）
+# 開発サーバーを起動（Vite UI + Capture Gateway）
 pnpm run dev
 ```
 
@@ -48,7 +48,8 @@ pnpm run dev
 - **スタイリング**：プレーン CSS
 - **Lint / Format**：ESLint / `pnpm run format`
 - **履歴保存**：`src/domain/history/history.ts` で IndexedDB を利用
-- **Playwright API**：`createScreenshotCapturer` + `createScreenshotRequestHandler` による依存注入可能な構成。`plugins/playwrightApi.ts` が Vite dev サーバーに `/api/screenshot` エンドポイントを追加（開発時のみ）。リクエストバリデーションは `src/domain/playwright/screenshotSchema.ts` の zod スキーマをクライアントとサーバーで共有しています。
+- **Capture Gateway**：軽量な HTTP Gateway が `/api/screenshot` を受け付け、リクエストごとの Worker に Playwright キャプチャを委譲します。待機中は Chromium と Playwright Worker を起動しません。
+- **共有プロトコル**：`packages/protocol/` の zod スキーマを UI と Gateway で共有しています。
 - **アプリケーションオーケストレーション層**：`src/domain/app/` 配下に `formController.ts` / `historyController.ts` / `screenshotController.ts` を配置し、`App.svelte` からフォーム・履歴・スクリーンショットの各ドメイン機能を委譲しています
 
 ---
@@ -58,7 +59,7 @@ pnpm run dev
 - 画面状態は `$state` / `$derived` / `$effect` を中心に管理し、`App.svelte` は `createFormController`・`createHistoryController`・`createScreenshotController` を通じてドメインロジックへ責務委譲しています。従来の Svelte store への依存はドメイン層のカスタム購読（例: `historyStore`）やフォームの `createSnapshotPersistAction` に置き換えています。
 - フォーム永続化は `src/actions/persistSnapshot.ts` のアクションを通じて行い、`localStorage` との同期を Rune のリアクティブ文脈から分離しています。
 - 共有リンクや履歴復元などの副作用は `$effect.root` 内で AbortController／URL revoke を管理し、メモリリークを防止しています。
-- Playwright API 連携も `plugins/playwrightApi/types.ts` に型を集約し、`createScreenshotCapturer` + `createScreenshotRequestHandler` で依存（ブラウザランチャー／フック／ロガー）を注入できる構成に更新済みです。
+- キャプチャフローは `packages/capture-core/` に分離し、グローバルフックではなく Worker 作成時に `CaptureProfile` を注入できる構成です。
 
 ---
 
@@ -111,14 +112,15 @@ pnpm run dev
 
 ```
 pnpm install        # 依存関係をインストール
-pnpm run dev        # Vite 開発サーバーを起動（Playwright API も有効化）
+pnpm run dev        # Vite 開発サーバーと Capture Gateway を並行起動
+pnpm run build      # 静的 UI を dist/ に生成
+pnpm run start      # Gateway が dist/ と /api/screenshot を配信
 pnpm run check      # Svelte + TypeScript チェック
 pnpm run lint       # ESLint による lint
 pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 ```
 
-- Playwright は `pnpm run dev` 実行時にローカルで起動できる環境が必要です。
-- 本プロジェクトは Vite の開発モード専用です。`pnpm run build` 結果や `vite preview` 相当の実行環境では Playwright 連携が無効になります。
+- Playwright はキャプチャ要求時に Worker 内でのみ起動します。初回利用前に `pnpm run playwright:install` を実行してください。
 
 ---
 
@@ -129,7 +131,10 @@ pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 - `src/components/HistoryPanel.svelte`：履歴リスト UI。サムネイル、Playwright 情報、設定復元ボタンを提供。
 - `src/components/DiffModal.svelte`：差分ビューアと Pixelmatch ベースの処理、各種エクスポート。
 - `src/components/ImageDropzone.svelte`：左右スロットへのドロップ／ペースト／ファイル選択制御。
-- `plugins/playwrightApi.ts`：開発サーバー専用の `/api/screenshot` エンドポイント。`plugins/playwrightApi/` 配下のユーティリティと連携して Playwright にスクリーンショットを依頼する。
+- `packages/capture-gateway/`：静的 UI と `/api/screenshot` を配信する軽量 Gateway。
+- `packages/capture-worker/`：要求ごとに起動・終了し、Playwright を実行する Worker。
+- `packages/capture-core/`：HTTP やプロセス管理から独立したキャプチャフロー。
+- `packages/protocol/`：UI と Gateway が共有する API スキーマ・型。
 - `docs/architecture.md`：本 README の補足として、クライアントとサーバーの責務を整理。
 
 ---
@@ -138,7 +143,7 @@ pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 
 Playwright フォームの下部にある「共有リンクをコピー」ボタンから、URL パラメータ `pw` に Base64 でシリアライズしたリンクを生成できます。リンクを開くとフォーム設定が復元され、その後 `pw` パラメータは自動的に削除されます（機微情報は入力しないでください）。
 
-- 依存注入：`plugins/playwrightApi/types.ts` で定義された `PlaywrightApiOptions` により、キャプチャ関数（`ScreenshotCapturer`）、フック（`CaptureHooks`）、ロガー、既定タイムアウトを差し替え可能です。
+- 分離構成：`packages/protocol/` が API 契約を共有し、Gateway が Worker を起動、`packages/capture-core/` がキャプチャフローを担います。
 - エンドポイント：`POST /api/screenshot`
 - リクエスト例：
 
@@ -160,7 +165,7 @@ Playwright フォームの下部にある「共有リンクをコピー」ボタ
   - タイムアウトは既定で 15,000ms。`timeout`（ミリ秒）を指定すると上書きできますが、UI のフォームからは送信されません（API を直接呼び出す際に指定してください）。
   - `waitFor` が空の場合でも、キャプチャ処理は `selector`（未指定時は `body`）の出現を `page.waitForSelector` で待機してから撮影します。
   - `selector` が空の場合は自動で `body` を対象。
-  - カスタムフックで処理を拡張できます。`plugins/playwrightApi/hooks.ts` で `prepareBrowser` / `preparePage` / `beforeCapture` / `afterCapture` を任意に上書きすると、ログイン操作やスクリーンショット後の加工などを柔軟に追加できます。
+  - カスタム処理は `capture-core` の `CaptureProfile` として Worker 作成時に注入できます。グローバルな可変フックは使用しません。
 - 実行結果は履歴としてブラウザに保存されるだけで、サーバー側には残りません。
 
 ---

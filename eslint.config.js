@@ -55,4 +55,10 @@ export default [
       ...tsPlugin.configs.recommended.rules,
     },
   },
+  {
+    files: ['scripts/**/*.mjs', 'packages/**/*.mjs'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ];

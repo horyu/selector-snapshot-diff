@@ -32,11 +32,10 @@
 
 ---
 
-### Playwright API の補足
+### Capture Gateway の補足
 
-- 開発サーバー専用（Vite の `configureServer` フック経由）で、ビルド成果物ではエンドポイントが存在しません。
-- `vite build` / `vite preview` モードでは API が無効になるため、クライアント側 (`import.meta.env.DEV` 判定) で警告を表示して処理を中断します。
-- 要求中にクライアントが離脱した場合でも Playwright のブラウザを確実にクローズするよう、`shouldAbort` フラグを共有しています。
-- リクエストボディは `parsePayload` で厳密に検証し、JSON 以外・型不一致は 400 を返却。タイムアウトは 15,000ms を既定とし、正の数値のみ受け付けます。
-- Rune 対応以降は `plugins/playwrightApi/types.ts` に型を集約し、`createScreenshotCapturer` + `createScreenshotRequestHandler` を介して Playwright 依存を差し替え可能にしています。共通の前処理・後処理は `plugins/playwrightApi/hooks.ts` の `globalCaptureHooks` を直接編集してカスタマイズします。
+- Gateway は Vite から独立して静的 UI と API を配信します。開発時は Vite の proxy を経由します。
+- 要求ごとに Worker を fork し、Worker が Playwright と Chromium を起動して終了します。待機中に Playwright は読み込まれません。
+- リクエストボディは `packages/protocol/` のスキーマで厳密に検証し、JSON 以外・型不一致は 400 を返却します。
+- キャプチャフローは `packages/capture-core/` にあり、グローバルフックではなく生成時に `CaptureProfile` を注入してカスタマイズします。
 - Playwright フォームの設定は「共有リンクをコピー」操作時に URL クエリ `pw`（Base64 エンコードされた JSON）として生成されます。リンクを開くとフォームへ展開したのち `pw` は URL から削除され、通常操作では URL を変更しません。

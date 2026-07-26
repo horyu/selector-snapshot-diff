@@ -1,0 +1,7 @@
+{
+  "name": "@selector-snapshot-diff/capture-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": "./src/capture.mjs"
+}

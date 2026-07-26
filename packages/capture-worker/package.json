@@ -1,0 +1,10 @@
+{
+  "name": "@selector-snapshot-diff/capture-worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@selector-snapshot-diff/capture-core": "workspace:*",
+    "playwright": "1.61.1"
+  }
+}
