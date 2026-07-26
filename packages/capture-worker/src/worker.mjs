@@ -5,16 +5,10 @@ import {
 } from '@selector-snapshot-diff/capture-core';
 
 const capture = createCapturer({ browser: chromium });
-let aborted = false;
-
-process.on('disconnect', () => {
-  aborted = true;
-});
 
 process.once('message', async (payload) => {
   try {
-    const buffer = await capture(payload, { shouldAbort: () => aborted });
-    if (buffer === null || aborted) return;
+    const buffer = await capture(payload);
     process.send?.({ type: 'result', buffer });
   } catch (error) {
     process.send?.({

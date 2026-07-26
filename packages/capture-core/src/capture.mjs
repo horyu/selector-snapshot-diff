@@ -23,7 +23,7 @@ export const defaultCaptureProfile = Object.freeze({
 export function createCapturer({ browser, profile = defaultCaptureProfile }) {
   const hooks = { ...defaultCaptureProfile, ...profile };
 
-  return async (payload, { shouldAbort = () => false } = {}) => {
+  return async (payload) => {
     const timeout = payload.timeout ?? DEFAULT_TIMEOUT_MS;
     let launchedBrowser;
 
@@ -31,10 +31,8 @@ export function createCapturer({ browser, profile = defaultCaptureProfile }) {
       const launchOptions = { headless: true };
       if (payload.args?.length) launchOptions.args = payload.args;
       await hooks.prepareBrowser(launchOptions, payload);
-      if (await shouldAbort()) return null;
 
       launchedBrowser = await browser.launch(launchOptions);
-      if (await shouldAbort()) return null;
 
       const context = await launchedBrowser.newContext({
         ...(payload.userAgent ? { userAgent: payload.userAgent } : {}),
@@ -44,15 +42,12 @@ export function createCapturer({ browser, profile = defaultCaptureProfile }) {
       const page = await context.newPage();
 
       await hooks.navigate(page, payload, timeout);
-      if (await shouldAbort()) return null;
       await hooks.beforeCapture(page, payload, timeout);
-      if (await shouldAbort()) return null;
 
       const element = await page.waitForSelector(payload.selector || 'body', {
         timeout,
       });
       if (!element) throw new SelectorNotFoundError();
-      if (await shouldAbort()) return null;
 
       const buffer = await element.screenshot({ type: 'png' });
       return (await hooks.afterCapture(page, payload, buffer)) ?? buffer;

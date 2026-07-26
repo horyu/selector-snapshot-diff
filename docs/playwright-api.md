@@ -33,7 +33,7 @@ Capture 機能は UI、HTTP Gateway、Worker、キャプチャフローを分離
 | ------------------ | ----------------- | --------------------------------------------------------------- |
 | キャプチャ関数     | `createCapturer`  | `capture-core` の Playwright 非依存なキャプチャフロー           |
 | Playwright 依存    | `chromium`        | Worker だけが `playwright` を読み込み、要求ごとにブラウザを起動 |
-| リクエストハンドラ | `capture-gateway` | HTTP 入力検証、Worker 起動、キャンセル伝播を担当                |
+| リクエストハンドラ | `capture-gateway` | HTTP 入力検証、Worker 起動・終了を担当                          |
 | Gateway            | `capture-gateway` | HTTP 入力検証、Worker 起動、静的 UI 配信を担当                  |
 
 リクエストのバリデーションは `packages/protocol/` の zod スキーマをクライアントと Gateway で共有しています。キャプチャ時のカスタマイズは、`capture-core` の生成時に `CaptureProfile` を注入して行います。
