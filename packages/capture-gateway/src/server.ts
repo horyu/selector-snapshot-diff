@@ -1,19 +1,32 @@
 import { fork } from 'node:child_process';
 import { createReadStream, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseScreenshotPayload } from '@selector-snapshot-diff/protocol/screenshot';
+import {
+  parseScreenshotPayload,
+  type ScreenshotPayload,
+} from '@selector-snapshot-diff/protocol/screenshot';
+
+type WorkerMessage =
+  | { type: 'result'; buffer: Buffer }
+  | {
+      type: 'error';
+      code: 'selector_not_found' | 'playwright_timeout' | 'capture_failed';
+      message: string;
+      stack?: string;
+    };
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(directory, '../../..');
 const workerPath = resolve(
   workspaceRoot,
-  'packages/capture-worker/src/worker.mjs'
+  'packages/capture-worker/src/worker.ts'
 );
 const distPath = resolve(workspaceRoot, 'dist');
 const port = Number(process.env.CAPTURE_PORT ?? 5174);
-const contentTypes = {
+const contentTypes: Record<string, string> = {
   '.css': 'text/css',
   '.html': 'text/html',
   '.js': 'text/javascript',
@@ -22,16 +35,20 @@ const contentTypes = {
   '.png': 'image/png',
 };
 
-const sendJson = (res, status, body) => {
+const sendJson = (
+  res: ServerResponse,
+  status: number,
+  body: Record<string, unknown>
+): void => {
   res.writeHead(status, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
 };
 
-const readBody = (req) =>
+const readBody = (req: IncomingMessage): Promise<string> =>
   new Promise((resolveBody, reject) => {
     let body = '';
     req.setEncoding('utf8');
-    req.on('data', (chunk) => {
+    req.on('data', (chunk: string) => {
       body += chunk;
       if (body.length > 1_000_000) reject(new Error('Request body too large'));
     });
@@ -40,7 +57,11 @@ const readBody = (req) =>
     req.once('error', reject);
   });
 
-const runCapture = (payload, req, res) =>
+const runCapture = (
+  payload: ScreenshotPayload,
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<void> =>
   new Promise((resolveCapture) => {
     const child = fork(workerPath, [], {
       serialization: 'advanced',
@@ -55,7 +76,8 @@ const runCapture = (payload, req, res) =>
       (payload.timeout ?? 15000) + 1000
     );
     let settled = false;
-    const finish = (fn) => {
+    const abort = () => child.kill();
+    const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
@@ -64,12 +86,11 @@ const runCapture = (payload, req, res) =>
       fn();
       resolveCapture();
     };
-    const abort = () => child.kill();
 
     req.once('aborted', abort);
     res.once('close', abort);
-    child.once('message', (message) => {
-      if (message?.type === 'result') {
+    child.once('message', (message: WorkerMessage) => {
+      if (message.type === 'result') {
         finish(() => {
           if (!res.writableEnded) {
             res.writeHead(200, {
@@ -81,25 +102,23 @@ const runCapture = (payload, req, res) =>
         });
         return;
       }
-      if (message?.type === 'error') {
-        finish(() => {
-          if (!res.writableEnded) {
-            const status =
-              message.code === 'selector_not_found'
-                ? 404
-                : message.code === 'playwright_timeout'
-                  ? 504
-                  : 500;
-            sendJson(res, status, {
-              ok: false,
-              code: message.code,
-              error: message.message,
-              message: message.message,
-              stack: message.stack,
-            });
-          }
-        });
-      }
+      const status =
+        message.code === 'selector_not_found'
+          ? 404
+          : message.code === 'playwright_timeout'
+            ? 504
+            : 500;
+      finish(() => {
+        if (!res.writableEnded) {
+          sendJson(res, status, {
+            ok: false,
+            code: message.code,
+            error: message.message,
+            message: message.message,
+            stack: message.stack,
+          });
+        }
+      });
     });
     child.once('exit', () => {
       finish(() => {
@@ -117,8 +136,8 @@ const runCapture = (payload, req, res) =>
     child.send(payload);
   });
 
-const serveStatic = (req, res) => {
-  const requestPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+const serveStatic = (req: IncomingMessage, res: ServerResponse): void => {
+  const requestPath = req.url === '/' ? '/index.html' : req.url?.split('?')[0];
   const target = resolve(distPath, `.${requestPath}`);
   const relativeTarget = relative(distPath, target);
   const safeTarget =
@@ -142,34 +161,41 @@ const serveStatic = (req, res) => {
 
 const server = createServer(async (req, res) => {
   if (req.url === '/api/screenshot') {
-    if (req.method !== 'POST')
-      return sendJson(res, 405, {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, {
         ok: false,
         code: 'method_not_allowed',
         error: 'Use POST',
       });
+      return;
+    }
     try {
       const raw = await readBody(req);
       const parsed = parseScreenshotPayload(raw ? JSON.parse(raw) : {});
-      if (!parsed.ok)
-        return sendJson(res, 400, {
+      if (!parsed.ok) {
+        sendJson(res, 400, {
           ok: false,
           code: 'invalid_payload',
           error: parsed.message,
         });
+        return;
+      }
       await runCapture(parsed.value, req, res);
     } catch (error) {
-      if (!res.writableEnded)
+      if (!res.writableEnded) {
         sendJson(res, 400, {
           ok: false,
           code: 'invalid_payload',
           error: error instanceof Error ? error.message : 'Invalid request',
         });
+      }
     }
     return;
   }
-  if (req.method !== 'GET' && req.method !== 'HEAD')
-    return sendJson(res, 405, { error: 'Use GET' });
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    sendJson(res, 405, { error: 'Use GET' });
+    return;
+  }
   serveStatic(req, res);
 });
 

@@ -1,12 +1,13 @@
-import { chromium } from 'playwright';
 import {
   createCapturer,
   SelectorNotFoundError,
 } from '@selector-snapshot-diff/capture-core';
+import type { ScreenshotPayload } from '@selector-snapshot-diff/protocol/screenshot';
+import { chromium } from 'playwright';
 
 const capture = createCapturer({ browser: chromium });
 
-process.once('message', async (payload) => {
+process.once('message', async (payload: ScreenshotPayload) => {
   try {
     const buffer = await capture(payload);
     process.send?.({ type: 'result', buffer });

@@ -56,7 +56,7 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.mjs', 'packages/**/*.mjs'],
+    files: ['scripts/**/*.ts', 'packages/**/*.ts'],
     languageOptions: {
       globals: globals.node,
     },

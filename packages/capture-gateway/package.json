@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node src/server.mjs",
-    "start": "node src/server.mjs"
+    "dev": "node src/server.ts",
+    "start": "node src/server.ts"
   },
   "dependencies": {
     "@selector-snapshot-diff/protocol": "workspace:*"

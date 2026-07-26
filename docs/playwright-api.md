@@ -83,7 +83,7 @@ curl -X POST http://localhost:5173/api/screenshot \
 
 ### 実装ファイル
 
-- `packages/capture-gateway/src/server.mjs`
-- `packages/capture-worker/src/worker.mjs`
-- `packages/capture-core/src/capture.mjs`
-- `packages/protocol/src/screenshot.js`
+- `packages/capture-gateway/src/server.ts`
+- `packages/capture-worker/src/worker.ts`
+- `packages/capture-core/src/capture.ts`
+- `packages/protocol/src/screenshot.ts`

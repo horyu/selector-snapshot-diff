@@ -2,13 +2,14 @@ import { parseErrorResponse } from '../../util/http';
 import type { ScreenshotPayload } from './screenshotSchema';
 
 export class ScreenshotRequestError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-    public stackTrace?: string
-  ) {
+  public readonly status: number;
+  public readonly stackTrace?: string;
+
+  constructor(status: number, message: string, stackTrace?: string) {
     super(message);
     this.name = 'ScreenshotRequestError';
+    this.status = status;
+    this.stackTrace = stackTrace;
   }
 }
 

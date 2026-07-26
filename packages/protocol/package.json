@@ -5,8 +5,8 @@
   "type": "module",
   "exports": {
     "./screenshot": {
-      "types": "./src/screenshot.d.ts",
-      "default": "./src/screenshot.js"
+      "types": "./src/screenshot.ts",
+      "default": "./src/screenshot.ts"
     }
   },
   "dependencies": {

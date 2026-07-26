@@ -3,5 +3,11 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "exports": "./src/capture.mjs"
+  "exports": "./src/capture.ts",
+  "dependencies": {
+    "@selector-snapshot-diff/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
 }
