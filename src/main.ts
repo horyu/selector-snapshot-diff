@@ -12,7 +12,7 @@ function showWarningIfNecessary(root: HTMLElement | null) {
 const appRoot = document.getElementById('app');
 let app: ReturnType<typeof mount> | null = null;
 
-if (!import.meta.env?.DEV || !appRoot) {
+if (!appRoot) {
   showWarningIfNecessary(appRoot);
 } else {
   app = mount(App, { target: appRoot });

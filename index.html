@@ -59,15 +59,14 @@
     <div id="app"></div>
     <template id="file-protocol-warning">
       <section class="file-warning" role="alert" aria-live="polite">
-        <h1 class="file-warning__title">開発サーバーを起動してください</h1>
+        <h1 class="file-warning__title">サーバーを起動してください</h1>
         <p class="file-warning__body">
-          このアプリは Vite の開発サーバー経由でのみ表示できます。
+          このアプリは file:// ではなく HTTP サーバー経由で表示してください。
         </p>
         <p class="file-warning__body">
-          <code>pnpm run dev</code> でサーバーを起動し、<code
-            >http://localhost:5173</code
-          >
-          へアクセスしてください。
+          開発時は <code>pnpm run dev</code>、ビルド済みアプリは
+          <code>pnpm run build</code> の後に
+          <code>pnpm run start</code> を実行します。
         </p>
       </section>
     </template>
