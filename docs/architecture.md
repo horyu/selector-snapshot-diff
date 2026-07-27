@@ -36,6 +36,7 @@
 
 - Gateway は Vite から独立して静的 UI と API を配信します。開発時は Vite の proxy を経由します。
 - 要求ごとに Worker を fork し、Worker が Playwright と Chromium を起動して終了します。待機中に Playwright は読み込まれません。
+- Gateway の通常停止時は、受付を停止して実行中の Worker を終了します。終了待機が長引く場合は 5 秒後に強制終了します。
 - リクエストボディは `packages/protocol/` のスキーマで厳密に検証し、JSON 以外・型不一致は 400 を返却します。
 - キャプチャフローは `packages/capture-core/` にあり、グローバルフックではなく生成時に `CaptureProfile` を注入してカスタマイズします。
 - Playwright フォームの設定は「共有リンクをコピー」操作時に URL クエリ `pw`（Base64 エンコードされた JSON）として生成されます。リンクを開くとフォームへ展開したのち `pw` は URL から削除され、通常操作では URL を変更しません。

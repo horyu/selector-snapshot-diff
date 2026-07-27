@@ -6,6 +6,11 @@ import type { ScreenshotPayload } from '@selector-snapshot-diff/protocol/screens
 import { chromium } from 'playwright';
 
 const capture = createCapturer({ browser: chromium });
+let completed = false;
+
+process.once('disconnect', () => {
+  if (!completed) process.exit(1);
+});
 
 process.once('message', async (payload: ScreenshotPayload) => {
   try {
@@ -24,6 +29,7 @@ process.once('message', async (payload: ScreenshotPayload) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
   } finally {
+    completed = true;
     process.disconnect?.();
   }
 });

@@ -1,4 +1,4 @@
-import { fork } from 'node:child_process';
+import { fork, type ChildProcess } from 'node:child_process';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -26,6 +26,8 @@ const workerPath = resolve(
 );
 const distPath = resolve(workspaceRoot, 'dist');
 const port = Number(process.env.CAPTURE_PORT ?? 5174);
+const activeWorkers = new Set<ChildProcess>();
+let shuttingDown = false;
 const contentTypes: Record<string, string> = {
   '.css': 'text/css',
   '.html': 'text/html',
@@ -67,6 +69,7 @@ const runCapture = (
       serialization: 'advanced',
       stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
     });
+    activeWorkers.add(child);
     let timedOut = false;
     const timeout = setTimeout(
       () => {
@@ -121,6 +124,7 @@ const runCapture = (
       });
     });
     child.once('exit', () => {
+      activeWorkers.delete(child);
       finish(() => {
         if (!res.writableEnded && !res.destroyed) {
           sendJson(res, timedOut ? 504 : 500, {
@@ -162,6 +166,10 @@ const serveStatic = (req: IncomingMessage, res: ServerResponse): void => {
 };
 
 const server = createServer(async (req, res) => {
+  if (shuttingDown) {
+    sendJson(res, 503, { error: 'Capture gateway is shutting down' });
+    return;
+  }
   if (req.url === '/api/screenshot') {
     if (req.method !== 'POST') {
       sendJson(res, 405, {
@@ -204,3 +212,27 @@ const server = createServer(async (req, res) => {
 server.listen(port, '127.0.0.1', () => {
   console.log(`Capture gateway listening on http://127.0.0.1:${port}`);
 });
+
+const shutdown = (signal: 'SIGINT' | 'SIGTERM'): void => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} received; stopping capture gateway`);
+
+  for (const worker of activeWorkers) worker.kill();
+  const forceExitTimer = setTimeout(() => {
+    for (const worker of activeWorkers) worker.kill('SIGKILL');
+    process.exit(1);
+  }, 5000);
+  forceExitTimer.unref();
+
+  server.close((error) => {
+    clearTimeout(forceExitTimer);
+    if (error) {
+      console.error('Capture gateway shutdown failed', error);
+      process.exitCode = 1;
+    }
+  });
+};
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
