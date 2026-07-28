@@ -75,10 +75,17 @@ const runCapture = (
 ): Promise<void> =>
   new Promise((resolveCapture) => {
     const child = fork(workerPath, [], {
+      execArgv: [],
       serialization: 'advanced',
-      stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     });
     activeWorkers.add(child);
+    let workerOutput = '';
+    const appendWorkerOutput = (chunk: Buffer | string) => {
+      workerOutput = `${workerOutput}${chunk.toString()}`.slice(-4000);
+    };
+    child.stdout?.on('data', appendWorkerOutput);
+    child.stderr?.on('data', appendWorkerOutput);
     let timedOut = false;
     const timeout = setTimeout(
       () => {
@@ -136,12 +143,14 @@ const runCapture = (
       activeWorkers.delete(child);
       finish(() => {
         if (!res.writableEnded && !res.destroyed) {
+          const output = workerOutput.trim();
           sendJson(res, timedOut ? 504 : 500, {
             ok: false,
             code: timedOut ? 'playwright_timeout' : 'capture_failed',
             error: timedOut
               ? 'Capture timed out'
               : 'Capture worker exited unexpectedly',
+            ...(output ? { message: output, stack: output } : {}),
           });
         }
       });

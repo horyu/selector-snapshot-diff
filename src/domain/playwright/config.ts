@@ -37,6 +37,10 @@ export function createFormSnapshot({
   };
 }
 
+function normalizeChromiumArg(value: string): string {
+  return value.replace(/^(--[^=]+=)(["'])(.*)\2$/, '$1$3');
+}
+
 export function buildScreenshotPayload({
   url,
   selector,
@@ -45,11 +49,13 @@ export function buildScreenshotPayload({
   vw,
   vh,
   waitFor,
+  requestTimeout,
   colorScheme,
 }: PlaywrightInputs): ScreenshotPayload {
   const parsedArgs = args
     .split(/\r?\n/)
     .map((t) => t.trim())
+    .map(normalizeChromiumArg)
     .filter((t) => t.length > 0);
   const payload: ScreenshotPayload = { url, selector };
   if (parsedArgs.length) payload.args = parsedArgs;
@@ -68,6 +74,10 @@ export function buildScreenshotPayload({
     };
   }
   if (waitFor.trim()) payload.waitFor = waitFor.trim();
+  const timeout = Number(requestTimeout);
+  if (Number.isFinite(timeout) && timeout > 0) {
+    payload.timeout = Math.round(timeout);
+  }
   if (
     colorScheme === 'light' ||
     colorScheme === 'dark' ||

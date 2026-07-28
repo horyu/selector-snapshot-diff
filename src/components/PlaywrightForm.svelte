@@ -41,7 +41,7 @@
     onCancel?: (payload: { slot: 'left' | 'right' }) => void;
   } = $props();
   const argsPlaceholder = `Example: --disable-web-security
-      --host-resolver-rules="MAP example.com 127.0.0.1"`;
+      --host-resolver-rules=MAP example.com 127.0.0.1`;
 </script>
 
 <section class="api-box" aria-label="対象スクリーンショット取得（Playwright）">
