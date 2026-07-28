@@ -39,6 +39,8 @@ pnpm run dev
 
 ブラウザで `http://localhost:5173` を開くとアプリが利用できます。
 
+ポートを変更する場合は `.env.example` を `.env.local` としてコピーし、`WEB_PORT` と `CAPTURE_PORT` を設定します。`.env` と `.env.local` の両方を読み込み、同じ項目は後から読む `.env.local` が優先されます。開発時は Vite が `CAPTURE_PORT` の Gateway へ `/api` を proxy します。
+
 ---
 
 ## システム構成
@@ -121,6 +123,7 @@ pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 ```
 
 - Playwright はキャプチャ要求時に Worker 内でのみ起動します。初回利用前に `pnpm run playwright:install` を実行してください。
+- `.env` と `.env.local` では `WEB_PORT`（既定: 5173）と `CAPTURE_PORT`（既定: 5174）を設定できます。`pnpm run start` は `CAPTURE_PORT` で待ち受けます。
 
 ---
 
@@ -172,7 +175,7 @@ Playwright フォームの下部にある「共有リンクをコピー」ボタ
 
 ## 制限事項
 
-- `pnpm run start` はローカル利用を前提に `127.0.0.1:5174` で待ち受けます。外部公開にはリバースプロキシや認証を含む別途の運用設計が必要です。
+- `pnpm run start` はローカル利用を前提に `CAPTURE_PORT`（未指定時は 5174）で `127.0.0.1` に待ち受けます。外部公開にはリバースプロキシや認証を含む別途の運用設計が必要です。
 - `dist/index.html` をファイルとして直接開く（`file://`）方法はサポートしていません。`pnpm run start` 経由で開いてください。
 
 ---

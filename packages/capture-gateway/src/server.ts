@@ -3,6 +3,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { dirname, extname, join, relative, resolve } from 'node:path';
+import { loadEnvFile } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
   parseScreenshotPayload,
@@ -20,12 +21,20 @@ type WorkerMessage =
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(directory, '../../..');
+for (const filename of ['.env', '.env.local']) {
+  const path = resolve(workspaceRoot, filename);
+  if (existsSync(path)) loadEnvFile(path);
+}
 const workerPath = resolve(
   workspaceRoot,
   'packages/capture-worker/src/worker.ts'
 );
 const distPath = resolve(workspaceRoot, 'dist');
-const port = Number(process.env.CAPTURE_PORT ?? 5174);
+const parsePort = (value: string | undefined, fallback: number): number => {
+  const port = Number(value);
+  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : fallback;
+};
+const port = parsePort(process.env.CAPTURE_PORT, 5174);
 const activeWorkers = new Set<ChildProcess>();
 let shuttingDown = false;
 const contentTypes: Record<string, string> = {

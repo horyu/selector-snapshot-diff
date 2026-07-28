@@ -56,7 +56,7 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.ts', 'packages/**/*.ts'],
+    files: ['vite.config.ts', 'scripts/**/*.ts', 'packages/**/*.ts'],
     languageOptions: {
       globals: globals.node,
     },
