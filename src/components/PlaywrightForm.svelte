@@ -54,7 +54,7 @@
         bind:this={urlInputRef}
       />
     </FormField>
-    <FormField label="selector （未指定なら body を使用）">
+    <FormField label="selector（未指定なら body を使用）">
       <input
         type="text"
         placeholder="例: h1, #app .btn"
@@ -84,7 +84,7 @@
     <FormField label="User Agent">
       <input type="text" placeholder="例: Mozilla/5.0 ..." bind:value={ua} />
     </FormField>
-    <FormField label="Viewport">
+    <FormField label="Viewport（両方入力時のみ有効）">
       <div class="vp">
         <input
           type="number"
