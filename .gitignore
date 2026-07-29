@@ -6,6 +6,7 @@ dist/
 
 # Logs and diagnostics
 pnpm-debug.log*
+logs/
 
 # Environment files
 .env

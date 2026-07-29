@@ -124,6 +124,7 @@ pnpm run format     # プレーン CSS / TS の整形（prettier 相当）
 
 - Playwright はキャプチャ要求時に Worker 内でのみ起動します。初回利用前に `pnpm run playwright:install` を実行してください。
 - `.env` と `.env.local` では `WEB_PORT`（既定: 5173）と `CAPTURE_PORT`（既定: 5174）を設定できます。`pnpm run start` は `CAPTURE_PORT` で待ち受けます。
+- ファイルログが必要な常駐起動では、シェルまたはサービスマネージャーで標準出力・標準エラーを収集します。例: `mkdir -p logs && nohup pnpm run start > logs/capture-gateway.log 2>&1 < /dev/null &`
 
 ---
 

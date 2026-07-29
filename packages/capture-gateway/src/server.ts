@@ -1,14 +1,14 @@
-import { fork, type ChildProcess } from 'node:child_process';
-import { createReadStream, existsSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
-import type { IncomingMessage, ServerResponse } from 'node:http';
-import { dirname, extname, join, relative, resolve } from 'node:path';
-import { loadEnvFile } from 'node:process';
-import { fileURLToPath } from 'node:url';
 import {
   parseScreenshotPayload,
   type ScreenshotPayload,
 } from '@selector-snapshot-diff/protocol/screenshot';
+import { fork, type ChildProcess } from 'node:child_process';
+import { createReadStream, existsSync, statSync } from 'node:fs';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createServer } from 'node:http';
+import { dirname, extname, join, relative, resolve } from 'node:path';
+import { loadEnvFile } from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 type WorkerMessage =
   | { type: 'result'; buffer: Buffer }
@@ -44,6 +44,48 @@ const contentTypes: Record<string, string> = {
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+};
+
+type LogLevel = 'info' | 'error';
+type ShutdownReason =
+  | 'SIGINT'
+  | 'SIGTERM'
+  | 'SIGHUP'
+  | 'serverError'
+  | 'uncaughtException'
+  | 'unhandledRejection';
+
+const serializeLogValue = (value: unknown): unknown => {
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack,
+    };
+  }
+  return value;
+};
+
+const writeLog = (
+  level: LogLevel,
+  message: string,
+  details?: Record<string, unknown>
+): void => {
+  const seen = new WeakSet<object>();
+  const serializedDetails = details
+    ? ` ${JSON.stringify(details, (_key, value) => {
+        const serialized = serializeLogValue(value);
+        if (typeof serialized === 'bigint') return serialized.toString();
+        if (typeof serialized === 'object' && serialized !== null) {
+          if (seen.has(serialized)) return '[Circular]';
+          seen.add(serialized);
+        }
+        return serialized;
+      })}`
+    : '';
+  const line = `${new Date().toISOString()} ${level.toUpperCase()} ${message}${serializedDetails}`;
+  const consoleWriter = level === 'error' ? console.error : console.log;
+  consoleWriter(line);
 };
 
 const sendJson = (
@@ -227,17 +269,28 @@ const server = createServer(async (req, res) => {
   serveStatic(req, res);
 });
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Capture gateway listening on http://127.0.0.1:${port}`);
+server.on('error', (error) => {
+  writeLog('error', 'Capture gateway server error', { error });
+  shutdown('serverError', 1);
 });
 
-const shutdown = (signal: 'SIGINT' | 'SIGTERM'): void => {
+server.listen(port, '127.0.0.1', () => {
+  writeLog('info', 'Capture gateway listening', {
+    url: `http://127.0.0.1:${port}`,
+  });
+});
+
+const shutdown = (reason: ShutdownReason, exitCode = 0): void => {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`${signal} received; stopping capture gateway`);
+  if (exitCode !== 0) process.exitCode = exitCode;
+  writeLog(exitCode === 0 ? 'info' : 'error', 'Stopping capture gateway', {
+    reason,
+  });
 
   for (const worker of activeWorkers) worker.kill();
   const forceExitTimer = setTimeout(() => {
+    writeLog('error', 'Force exiting capture gateway', { reason });
     for (const worker of activeWorkers) worker.kill('SIGKILL');
     process.exit(1);
   }, 5000);
@@ -246,11 +299,22 @@ const shutdown = (signal: 'SIGINT' | 'SIGTERM'): void => {
   server.close((error) => {
     clearTimeout(forceExitTimer);
     if (error) {
-      console.error('Capture gateway shutdown failed', error);
+      writeLog('error', 'Capture gateway shutdown failed', { error });
       process.exitCode = 1;
+      return;
     }
+    writeLog('info', 'Capture gateway stopped', { reason });
   });
 };
 
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGHUP', () => shutdown('SIGHUP'));
+process.once('uncaughtException', (error) => {
+  writeLog('error', 'Uncaught exception', { error });
+  shutdown('uncaughtException', 1);
+});
+process.once('unhandledRejection', (reason) => {
+  writeLog('error', 'Unhandled rejection', { reason });
+  shutdown('unhandledRejection', 1);
+});
